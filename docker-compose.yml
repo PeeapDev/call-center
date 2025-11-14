@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  asterisk:
+    image: andrius/asterisk:latest
+    container_name: callcenter-asterisk
+    restart: unless-stopped
+    ports:
+      - "5060:5060/udp"      # SIP UDP (if used)
+      - "5061:5061/tcp"      # SIP TCP/TLS (future)
+      - "8088:8088"          # HTTP for ARI and WebSocket
+      - "5038:5038"          # AMI
+      - "10000-10100:10000-10100/udp"  # RTP range
+    environment:
+      - TZ=UTC
+    healthcheck:
+      test: ["CMD-SHELL", "asterisk -rx 'core show version' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - ./docker/asterisk/conf:/etc/asterisk
