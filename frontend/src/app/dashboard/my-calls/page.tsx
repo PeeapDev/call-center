@@ -11,6 +11,8 @@ import {
   XCircle,
   History,
   Play,
+  PhoneCall,
+  X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -75,10 +77,31 @@ const mockCallHistory: CallHistory[] = [
 export default function MyCallsPage() {
   const [callHistory] = useState<CallHistory[]>(mockCallHistory);
   const [selectedTab, setSelectedTab] = useState<'active' | 'history'>('active');
+  const [showDialer, setShowDialer] = useState(false);
+  const [dialNumber, setDialNumber] = useState('');
 
   const handleCallback = (call: CallHistory) => {
-    alert(`Initiating callback to ${call.callerNumber}`);
+    setDialNumber(call.callerNumber);
+    setShowDialer(true);
+  };
+
+  const handleDial = () => {
+    if (!dialNumber.trim()) {
+      alert('Please enter a phone number');
+      return;
+    }
+    alert(`Initiating call to ${dialNumber}`);
     // In production, this would trigger WebRTC call or route through Asterisk
+    setShowDialer(false);
+    setDialNumber('');
+  };
+
+  const addDigit = (digit: string) => {
+    setDialNumber(dialNumber + digit);
+  };
+
+  const deleteDigit = () => {
+    setDialNumber(dialNumber.slice(0, -1));
   };
 
   const formatDuration = (seconds: number) => {
@@ -109,10 +132,21 @@ export default function MyCallsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <h1 className="text-3xl font-bold text-gray-900">My Calls</h1>
-        <p className="text-gray-500 mt-1">
-          Manage your active calls and call history
-        </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">My Calls</h1>
+            <p className="text-gray-500 mt-1">
+              Manage your active calls and call history
+            </p>
+          </div>
+          <Button 
+            onClick={() => setShowDialer(true)}
+            className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
+          >
+            <PhoneCall className="w-4 h-4" />
+            Make a Call
+          </Button>
+        </div>
       </motion.div>
 
       {/* Tab Navigation */}
@@ -300,6 +334,97 @@ export default function MyCallsPage() {
             </motion.div>
           ))}
         </motion.div>
+      )}
+
+      {/* Dialer Modal */}
+      {showDialer && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card className="w-full max-w-md shadow-2xl">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <PhoneCall className="w-5 h-5 text-green-600" />
+                  Make a Call
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDialer(false)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Number Display */}
+                <div className="p-4 bg-gray-100 rounded-lg text-center">
+                  <input
+                    type="text"
+                    value={dialNumber}
+                    onChange={(e) => setDialNumber(e.target.value)}
+                    placeholder="Enter phone number"
+                    className="w-full text-center text-2xl font-mono bg-transparent border-none outline-none"
+                  />
+                </div>
+
+                {/* Dialpad */}
+                <div className="grid grid-cols-3 gap-3">
+                  {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((digit) => (
+                    <Button
+                      key={digit}
+                      onClick={() => addDigit(digit)}
+                      variant="outline"
+                      className="h-16 text-xl font-semibold hover:bg-green-50"
+                    >
+                      {digit}
+                    </Button>
+                  ))}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-3 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={deleteDigit}
+                    className="h-12"
+                  >
+                    Delete
+                  </Button>
+                  <Button
+                    onClick={handleDial}
+                    className="h-12 bg-green-600 hover:bg-green-700"
+                  >
+                    <PhoneCall className="w-5 h-5 mr-2" />
+                    Call
+                  </Button>
+                </div>
+
+                {/* Quick Dial Suggestions */}
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-gray-600 mb-2">Recent Contacts:</p>
+                  <div className="space-y-2">
+                    {callHistory.slice(0, 3).map((call) => (
+                      <button
+                        key={call.id}
+                        onClick={() => setDialNumber(call.callerNumber)}
+                        className="w-full p-2 text-left hover:bg-gray-50 rounded-lg flex items-center justify-between"
+                      >
+                        <div>
+                          <p className="font-medium text-sm">{call.callerName || 'Unknown'}</p>
+                          <p className="text-xs text-gray-500">{call.callerNumber}</p>
+                        </div>
+                        <PhoneOutgoing className="w-4 h-4 text-green-600" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
       )}
     </div>
   );

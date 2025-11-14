@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent WebRTC Registration</title>
+    <script src="https://cdn.jsdelivr.net/npm/jssip@3.10.1/dist/jssip.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #2563eb;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #374151;
+            font-weight: 600;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background: #1d4ed8;
+        }
+        
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d1fae5;
+            border: 2px solid #10b981;
+            color: #065f46;
+            display: block;
+        }
+        
+        .status.error {
+            background: #fee2e2;
+            border: 2px solid #ef4444;
+            color: #991b1b;
+            display: block;
+        }
+        
+        .status.info {
+            background: #dbeafe;
+            border: 2px solid #3b82f6;
+            color: #1e40af;
+            display: block;
+        }
+        
+        .logs {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            color: #374151;
+        }
+        
+        .call-notification {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 1000;
+            min-width: 300px;
+        }
+        
+        .call-notification.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .call-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .call-actions button {
+            flex: 1;
+            margin-top: 0;
+        }
+        
+        .answer-btn {
+            background: #10b981 !important;
+        }
+        
+        .reject-btn {
+            background: #ef4444 !important;
+        }
+        
+        .quick-register {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .quick-register button {
+            flex: 1;
+            padding: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📞 Agent WebRTC Registration</h1>
+        <p class="subtitle">Register as an agent to receive calls from mobile users</p>
+        
+        <div class="form-group">
+            <label>Agent Selection</label>
+            <select id="agentSelect">
+                <option value="">-- Select Agent --</option>
+                <option value="agent001">Agent 001</option>
+                <option value="agent002">Agent 002</option>
+                <option value="agent003">Agent 003</option>
+                <option value="agent004">Agent 004</option>
+            </select>
+        </div>
+        
+        <div class="quick-register">
+            <button onclick="quickRegister('agent001')">🔵 Agent 1</button>
+            <button onclick="quickRegister('agent002')">🟢 Agent 2</button>
+            <button onclick="quickRegister('agent003')">🟡 Agent 3</button>
+            <button onclick="quickRegister('agent004')">🔴 Agent 4</button>
+        </div>
+        
+        <div class="form-group">
+            <label>Asterisk WebSocket URL</label>
+            <input type="text" id="wsServer" value="ws://192.168.1.17:8088/ws" />
+        </div>
+        
+        <button id="registerBtn" onclick="registerAgent()">🚀 Register Agent</button>
+        <button id="unregisterBtn" onclick="unregisterAgent()" style="display: none; background: #ef4444;">📴 Unregister</button>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="logs" id="logs"></div>
+    </div>
+    
+    <div class="call-notification" id="callNotification">
+        <h3 style="margin-bottom: 10px;">📞 Incoming Call</h3>
+        <p id="callerInfo" style="color: #6b7280; margin-bottom: 5px;"></p>
+        <p id="callTime" style="color: #9ca3af; font-size: 12px;"></p>
+        <div class="call-actions">
+            <button class="answer-btn" onclick="answerCall()">✅ Answer</button>
+            <button class="reject-btn" onclick="rejectCall()">❌ Reject</button>
+        </div>
+    </div>
+    
+    <audio id="remoteAudio" autoplay></audio>
+    
+    <script>
+        let ua = null;
+        let currentSession = null;
+        
+        const agentCredentials = {
+            agent001: { password: 'secure_password_001', display: 'Agent 001', extension: '1001' },
+            agent002: { password: 'secure_password_002', display: 'Agent 002', extension: '1002' },
+            agent003: { password: 'secure_password_003', display: 'Agent 003', extension: '1003' },
+            agent004: { password: 'secure_password_004', display: 'Agent 004', extension: '1004' },
+        };
+        
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${time}] ${message}`;
+            logs.appendChild(entry);
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+        
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+        }
+        
+        function quickRegister(agentId) {
+            document.getElementById('agentSelect').value = agentId;
+            registerAgent();
+        }
+        
+        async function registerAgent() {
+            const agentSelect = document.getElementById('agentSelect');
+            const wsServer = document.getElementById('wsServer').value;
+            const agentId = agentSelect.value;
+            
+            if (!agentId) {
+                showStatus('Please select an agent', 'error');
+                return;
+            }
+            
+            const credentials = agentCredentials[agentId];
+            const domain = wsServer.split('/')[2].split(':')[0];
+            
+            try {
+                log(`🔌 Connecting to ${wsServer}...`);
+                showStatus('Registering...', 'info');
+                
+                // Enable JsSIP debug
+                JsSIP.debug.enable('JsSIP:*');
+                
+                const socket = new JsSIP.WebSocketInterface(wsServer);
+                
+                const configuration = {
+                    sockets: [socket],
+                    uri: `sip:${agentId}@${domain}`,
+                    password: credentials.password,
+                    display_name: credentials.display,
+                    session_timers: false,
+                    register: true,
+                    register_expires: 600,
+                };
+                
+                ua = new JsSIP.UA(configuration);
+                
+                ua.on('registered', () => {
+                    log(`✅ ${credentials.display} registered successfully!`);
+                    showStatus(`✅ Registered as ${credentials.display} - Ready to receive calls!`, 'success');
+                    document.getElementById('registerBtn').style.display = 'none';
+                    document.getElementById('unregisterBtn').style.display = 'block';
+                    document.getElementById('agentSelect').disabled = true;
+                    document.getElementById('wsServer').disabled = true;
+                });
+                
+                ua.on('registrationFailed', (e) => {
+                    log(`❌ Registration failed: ${e.cause}`, 'error');
+                    showStatus(`Registration failed: ${e.cause}`, 'error');
+                });
+                
+                ua.on('unregistered', () => {
+                    log('📴 Unregistered');
+                    showStatus('Unregistered', 'info');
+                });
+                
+                ua.on('newRTCSession', (data) => {
+                    const session = data.session;
+                    
+                    if (session.direction === 'incoming') {
+                        currentSession = session;
+                        const callerNumber = session.remote_identity.uri.user;
+                        const callerName = session.remote_identity.display_name || 'Unknown';
+                        
+                        log(`📞 Incoming call from: ${callerName} (${callerNumber})`);
+                        
+                        // Show call notification
+                        const notification = document.getElementById('callNotification');
+                        const callerInfo = document.getElementById('callerInfo');
+                        const callTime = document.getElementById('callTime');
+                        
+                        callerInfo.textContent = `From: ${callerName}`;
+                        callTime.textContent = `Number: ${callerNumber}`;
+                        notification.classList.add('show');
+                        
+                        // Play ringtone
+                        playRingtone();
+                        
+                        session.on('ended', () => {
+                            log('📴 Call ended');
+                            notification.classList.remove('show');
+                            stopRingtone();
+                        });
+                        
+                        session.on('failed', () => {
+                            log('❌ Call failed');
+                            notification.classList.remove('show');
+                            stopRingtone();
+                        });
+                    }
+                });
+                
+                ua.start();
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function unregisterAgent() {
+            if (ua) {
+                ua.stop();
+                ua = null;
+            }
+            document.getElementById('registerBtn').style.display = 'block';
+            document.getElementById('unregisterBtn').style.display = 'none';
+            document.getElementById('agentSelect').disabled = false;
+            document.getElementById('wsServer').disabled = false;
+            showStatus('Unregistered', 'info');
+            log('📴 Agent unregistered');
+        }
+        
+        function answerCall() {
+            if (!currentSession) return;
+            
+            log('✅ Answering call...');
+            
+            const answerOptions = {
+                mediaConstraints: {
+                    audio: true,
+                    video: false
+                }
+            };
+            
+            currentSession.answer(answerOptions);
+            
+            currentSession.on('accepted', () => {
+                log('✅ Call connected!');
+                showStatus('Call in progress...', 'success');
+            });
+            
+            currentSession.on('peerconnection', (e) => {
+                const pc = e.peerconnection;
+                
+                pc.addEventListener('addstream', (event) => {
+                    const remoteAudio = document.getElementById('remoteAudio');
+                    remoteAudio.srcObject = event.stream;
+                    log('🎵 Audio stream connected');
+                });
+            });
+            
+            document.getElementById('callNotification').classList.remove('show');
+            stopRingtone();
+        }
+        
+        function rejectCall() {
+            if (!currentSession) return;
+            
+            log('❌ Call rejected');
+            currentSession.terminate();
+            currentSession = null;
+            document.getElementById('callNotification').classList.remove('show');
+            stopRingtone();
+        }
+        
+        let ringtoneInterval = null;
+        
+        function playRingtone() {
+            // Simple beep sound
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            ringtoneInterval = setInterval(() => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            }, 1000);
+        }
+        
+        function stopRingtone() {
+            if (ringtoneInterval) {
+                clearInterval(ringtoneInterval);
+                ringtoneInterval = null;
+            }
+        }
+        
+        // Auto-fill with detected IP
+        log('🚀 Agent Registration Ready');
+        log('📍 Detected Asterisk IP: 192.168.1.17');
+    </script>
+</body>
+</html>

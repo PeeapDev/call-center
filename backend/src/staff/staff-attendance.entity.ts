@@ -1,5 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Staff } from './staff.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
 @Entity('staff_attendance')
 export class StaffAttendance {
@@ -8,10 +7,6 @@ export class StaffAttendance {
 
   @Column()
   staffId: string;
-
-  @ManyToOne(() => Staff, staff => staff.attendances)
-  @JoinColumn({ name: 'staffId' })
-  staff: Staff;
 
   @Column({ type: 'date' })
   date: Date;

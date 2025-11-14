@@ -1,5 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
-import { StaffAttendance } from './staff-attendance.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('staff')
 export class Staff {
@@ -54,9 +53,6 @@ export class Staff {
 
   @Column({ type: 'json', nullable: true })
   workSchedule: any; // { monday: "9:00-17:00", tuesday: "9:00-17:00" }
-
-  @OneToMany(() => StaffAttendance, attendance => attendance.staff)
-  attendances: StaffAttendance[];
 
   @CreateDateColumn()
   createdAt: Date;

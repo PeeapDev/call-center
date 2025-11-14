@@ -33,12 +33,18 @@ export class StaffController {
 
   @Post()
   async create(@Body() createDto: CreateStaffDto) {
-    return this.staffService.create(createDto);
+    const staffData: any = { ...createDto };
+    if (createDto.hireDate) staffData.hireDate = new Date(createDto.hireDate);
+    if (createDto.dateOfBirth) staffData.dateOfBirth = new Date(createDto.dateOfBirth);
+    return this.staffService.create(staffData);
   }
 
   @Put(':id')
   async update(@Param('id') id: string, @Body() updateDto: UpdateStaffDto) {
-    return this.staffService.update(id, updateDto);
+    const staffData: any = { ...updateDto };
+    if (updateDto.hireDate) staffData.hireDate = new Date(updateDto.hireDate);
+    if (updateDto.dateOfBirth) staffData.dateOfBirth = new Date(updateDto.dateOfBirth);
+    return this.staffService.update(id, staffData);
   }
 
   @Delete(':id')

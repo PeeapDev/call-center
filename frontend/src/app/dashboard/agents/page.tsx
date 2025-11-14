@@ -3,7 +3,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, Phone, Clock, TrendingUp } from 'lucide-react';
+import { Users, Phone, Clock, TrendingUp, PhoneCall, PhoneOff, CheckCircle, XCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import Script from 'next/script';
 
 const mockAgents = [
   {
@@ -16,6 +18,8 @@ const mockAgents = [
     callsToday: 12,
     avgCallTime: '4:23',
     extension: '1001',
+    sipUsername: 'agent001',
+    sipPassword: 'secure_password_001',
   },
   {
     id: '2',
@@ -27,6 +31,8 @@ const mockAgents = [
     callsToday: 9,
     avgCallTime: '3:56',
     extension: '1002',
+    sipUsername: 'agent002',
+    sipPassword: 'secure_password_002',
   },
   {
     id: '3',
@@ -38,6 +44,8 @@ const mockAgents = [
     callsToday: 11,
     avgCallTime: '5:12',
     extension: '1003',
+    sipUsername: 'agent003',
+    sipPassword: 'secure_password_003',
   },
   {
     id: '4',
@@ -49,6 +57,8 @@ const mockAgents = [
     callsToday: 8,
     avgCallTime: '4:45',
     extension: '1004',
+    sipUsername: 'agent004',
+    sipPassword: 'secure_password_004',
   },
   {
     id: '5',
@@ -60,6 +70,8 @@ const mockAgents = [
     callsToday: 0,
     avgCallTime: 'N/A',
     extension: '1005',
+    sipUsername: 'agent005',
+    sipPassword: 'secure_password_005',
   },
   {
     id: '6',
@@ -71,26 +83,150 @@ const mockAgents = [
     callsToday: 7,
     avgCallTime: '3:34',
     extension: '1006',
+    sipUsername: 'agent006',
+    sipPassword: 'secure_password_006',
   },
 ];
 
+interface WebRTCAgent {
+  agentId: string;
+  ua: any;
+  isRegistered: boolean;
+  currentSession: any;
+}
+
 export default function AgentsPage() {
+  const [webrtcAgents, setWebrtcAgents] = useState<Map<string, WebRTCAgent>>(new Map());
+  const [jssipLoaded, setJssipLoaded] = useState(false);
+  const [wsServer, setWsServer] = useState('ws://192.168.1.17:8088/ws');
+
   const onlineAgents = mockAgents.filter((a) => a.status !== 'offline');
   const onCallAgents = mockAgents.filter((a) => a.status === 'on-call');
   const availableAgents = mockAgents.filter((a) => a.status === 'available');
+  const webrtcRegisteredCount = Array.from(webrtcAgents.values()).filter(a => a.isRegistered).length;
+
+  const registerAgent = async (agent: typeof mockAgents[0]) => {
+    if (!jssipLoaded) {
+      alert('JsSIP library is still loading. Please wait...');
+      return;
+    }
+
+    try {
+      // @ts-ignore - JsSIP is loaded from CDN
+      const JsSIP = window.JsSIP;
+      
+      if (!JsSIP) {
+        alert('JsSIP library not loaded. Please refresh the page.');
+        return;
+      }
+
+      const domain = wsServer.split('/')[2].split(':')[0];
+      const socket = new JsSIP.WebSocketInterface(wsServer);
+
+      const configuration = {
+        sockets: [socket],
+        uri: `sip:${agent.sipUsername}@${domain}`,
+        password: agent.sipPassword,
+        display_name: agent.name,
+        session_timers: false,
+        register: true,
+        register_expires: 600,
+      };
+
+      const ua = new JsSIP.UA(configuration);
+
+      ua.on('registered', () => {
+        console.log(`✅ ${agent.name} registered for WebRTC calls`);
+        setWebrtcAgents(prev => {
+          const newMap = new Map(prev);
+          newMap.set(agent.id, {
+            agentId: agent.id,
+            ua,
+            isRegistered: true,
+            currentSession: null,
+          });
+          return newMap;
+        });
+      });
+
+      ua.on('registrationFailed', (e: any) => {
+        console.error(`❌ ${agent.name} registration failed:`, e.cause);
+        alert(`Registration failed for ${agent.name}: ${e.cause}`);
+      });
+
+      ua.on('newRTCSession', (data: any) => {
+        const session = data.session;
+        
+        if (session.direction === 'incoming') {
+          console.log(`📞 Incoming call for ${agent.name}`);
+          
+          // Auto-answer or show notification
+          const shouldAnswer = confirm(`Incoming call for ${agent.name}. Answer?`);
+          
+          if (shouldAnswer) {
+            session.answer({
+              mediaConstraints: { audio: true, video: false }
+            });
+            
+            setWebrtcAgents(prev => {
+              const newMap = new Map(prev);
+              const agentData = newMap.get(agent.id);
+              if (agentData) {
+                agentData.currentSession = session;
+                newMap.set(agent.id, agentData);
+              }
+              return newMap;
+            });
+          } else {
+            session.terminate();
+          }
+        }
+      });
+
+      ua.start();
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      alert(`Failed to register ${agent.name}: ${error.message}`);
+    }
+  };
+
+  const unregisterAgent = (agentId: string) => {
+    const webrtcAgent = webrtcAgents.get(agentId);
+    if (webrtcAgent && webrtcAgent.ua) {
+      webrtcAgent.ua.stop();
+      setWebrtcAgents(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(agentId);
+        return newMap;
+      });
+    }
+  };
+
+  const isAgentRegistered = (agentId: string): boolean => {
+    return webrtcAgents.get(agentId)?.isRegistered ?? false;
+  };
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Agents</h1>
-          <p className="text-gray-500 mt-1">Manage and monitor call center agents</p>
+    <>
+      <Script 
+        src="https://cdn.jsdelivr.net/npm/jssip@3.10.1/dist/jssip.min.js"
+        onLoad={() => {
+          setJssipLoaded(true);
+          console.log('✅ JsSIP library loaded');
+        }}
+      />
+      
+      <div className="space-y-8">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Agent Management</h1>
+            <p className="text-gray-500 mt-1">Manage agents, monitor calls, and configure WebRTC</p>
+          </div>
+          <Button>Add Agent</Button>
         </div>
-        <Button>Add Agent</Button>
-      </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Agents</CardTitle>
@@ -140,7 +276,48 @@ export default function AgentsPage() {
             <p className="text-xs text-muted-foreground">Avg call duration</p>
           </CardContent>
         </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">WebRTC Registered</CardTitle>
+            <PhoneCall className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">
+              {webrtcRegisteredCount}
+            </div>
+            <p className="text-xs text-muted-foreground">Ready to receive calls</p>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* WebRTC Configuration */}
+      <Card className="border-purple-200 bg-purple-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <PhoneCall className="w-5 h-5 text-purple-600" />
+            WebRTC Agent Registration
+          </CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
+            Register agents to receive calls from mobile users via WebRTC. Click the "Register" button for each agent.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-700 w-32">Asterisk Server:</label>
+            <input
+              type="text"
+              value={wsServer}
+              onChange={(e) => setWsServer(e.target.value)}
+              className="flex-1 px-3 py-2 border rounded-md text-sm"
+              placeholder="ws://192.168.1.17:8088/ws"
+            />
+            <Badge variant={jssipLoaded ? "default" : "secondary"}>
+              {jssipLoaded ? "JsSIP Loaded" : "Loading..."}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Agents List */}
       <Card>
@@ -149,76 +326,101 @@ export default function AgentsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {mockAgents.map((agent) => (
-              <div
-                key={agent.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold text-lg">
-                    {agent.name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <p className="font-semibold text-gray-900">{agent.name}</p>
-                      <Badge
-                        variant={
-                          agent.status === 'on-call'
-                            ? 'default'
-                            : agent.status === 'available'
-                              ? 'secondary'
-                              : 'outline'
-                        }
-                        className={
-                          agent.status === 'on-call'
-                            ? 'bg-green-500'
-                            : agent.status === 'available'
-                              ? 'bg-blue-500'
-                              : ''
-                        }
-                      >
-                        {agent.status}
-                      </Badge>
+            {mockAgents.map((agent) => {
+              const isRegistered = isAgentRegistered(agent.id);
+              return (
+                <div
+                  key={agent.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold text-lg">
+                      {agent.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')}
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">{agent.email}</p>
-                    {agent.currentCall && (
-                      <p className="text-sm text-green-600 font-medium mt-1">
-                        📞 On call with {agent.currentCall} • {agent.callDuration}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <p className="font-semibold text-gray-900">{agent.name}</p>
+                        <Badge
+                          variant={
+                            agent.status === 'on-call'
+                              ? 'default'
+                              : agent.status === 'available'
+                                ? 'secondary'
+                                : 'outline'
+                          }
+                          className={
+                            agent.status === 'on-call'
+                              ? 'bg-green-500'
+                              : agent.status === 'available'
+                                ? 'bg-blue-500'
+                                : ''
+                          }
+                        >
+                          {agent.status}
+                        </Badge>
+                        {isRegistered && (
+                          <Badge className="bg-purple-600">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            WebRTC Active
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">{agent.email}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        SIP: {agent.sipUsername} • Ext: {agent.extension}
                       </p>
+                      {agent.currentCall && (
+                        <p className="text-sm text-green-600 font-medium mt-1">
+                          📞 On call with {agent.currentCall} • {agent.callDuration}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-gray-900">
+                        {agent.callsToday}
+                      </p>
+                      <p className="text-xs text-gray-500">Calls today</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-semibold text-gray-900">
+                        {agent.avgCallTime}
+                      </p>
+                      <p className="text-xs text-gray-500">Avg duration</p>
+                    </div>
+                    {isRegistered ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => unregisterAgent(agent.id)}
+                        className="border-red-300 text-red-600 hover:bg-red-50"
+                      >
+                        <PhoneOff className="w-4 h-4 mr-2" />
+                        Unregister
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => registerAgent(agent)}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        <PhoneCall className="w-4 h-4 mr-2" />
+                        Register WebRTC
+                      </Button>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-8">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">
-                      {agent.callsToday}
-                    </p>
-                    <p className="text-xs text-gray-500">Calls today</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-semibold text-gray-900">
-                      {agent.avgCallTime}
-                    </p>
-                    <p className="text-xs text-gray-500">Avg duration</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-semibold text-gray-900">
-                      Ext {agent.extension}
-                    </p>
-                    <p className="text-xs text-gray-500">Extension</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    View Details
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }

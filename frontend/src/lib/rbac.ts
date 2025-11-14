@@ -19,6 +19,8 @@ export interface RolePermissions {
   canViewSettings: boolean;
   canEditSettings: boolean;
   canViewWebRTC: boolean;
+  canViewHR: boolean;
+  canManageHR: boolean;
 }
 
 export const rolePermissions: Record<UserRole, RolePermissions> = {
@@ -39,6 +41,8 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewSettings: true,
     canEditSettings: true,
     canViewWebRTC: true,
+    canViewHR: true,
+    canManageHR: true,
   },
   supervisor: {
     canViewDashboard: true,
@@ -57,6 +61,8 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewSettings: false,
     canEditSettings: false,
     canViewWebRTC: true,
+    canViewHR: true,
+    canManageHR: false,
   },
   agent: {
     canViewDashboard: false, // Agents get their own simplified dashboard
@@ -75,6 +81,8 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewSettings: false,
     canEditSettings: false,
     canViewWebRTC: true,
+    canViewHR: false,
+    canManageHR: false,
   },
   analyst: {
     canViewDashboard: true,
@@ -93,6 +101,8 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewSettings: false,
     canEditSettings: false,
     canViewWebRTC: false,
+    canViewHR: false,
+    canManageHR: false,
   },
   auditor: {
     canViewDashboard: true,
@@ -111,6 +121,8 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewSettings: false,
     canEditSettings: false,
     canViewWebRTC: false,
+    canViewHR: false,
+    canManageHR: false,
   },
 };
 
@@ -156,6 +168,10 @@ export function getNavigationItems(role: UserRole | undefined) {
 
     if (permissions.canViewAgents) {
       items.push({ href: '/dashboard/agents', label: 'Agents', icon: 'Users' });
+    }
+
+    if (permissions.canViewHR) {
+      items.push({ href: '/dashboard/hr', label: 'Human Resources', icon: 'Briefcase' });
     }
 
     if (permissions.canViewRecordings) {

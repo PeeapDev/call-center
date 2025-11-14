@@ -29,7 +29,7 @@ export class CaseService {
     });
   }
 
-  async findOne(id: string): Promise<Case> {
+  async findOne(id: string): Promise<Case | null> {
     return this.caseRepository.findOne({ where: { id } });
   }
 
@@ -49,9 +49,13 @@ export class CaseService {
     return this.caseRepository.save(newCase);
   }
 
-  async update(id: string, caseData: Partial<Case>): Promise<Case> {
+  async update(id: string, caseData: Partial<Case>): Promise<Case | null> {
     const existingCase = await this.findOne(id);
     
+    if (!existingCase) {
+      return null;
+    }
+
     // Calculate duration if resolving
     if (caseData.status === 'resolved' && !existingCase.resolvedAt) {
       caseData.resolvedAt = new Date();
@@ -75,13 +79,14 @@ export class CaseService {
     callDuration?: number;
     callStartTime?: Date;
     callEndTime?: Date;
-  }): Promise<Case> {
+  }): Promise<Case | null> {
     await this.caseRepository.update(caseId, callData);
     return this.findOne(caseId);
   }
 
-  async addNote(caseId: string, note: string, authorId: string): Promise<Case> {
+  async addNote(caseId: string, note: string, authorId: string): Promise<Case | null> {
     const caseRecord = await this.findOne(caseId);
+    if (!caseRecord) return null;
     const notes = caseRecord.notes || [];
     
     notes.push({

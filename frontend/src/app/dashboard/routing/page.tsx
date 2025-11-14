@@ -144,6 +144,43 @@ export default function CallRoutingPage() {
         </div>
       </motion.div>
 
+      {/* Quick Stats - MOVED TO TOP */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+          <CardContent className="p-6">
+            <GitBranch className="w-8 h-8 mb-2" />
+            <p className="text-3xl font-bold">{rules.length}</p>
+            <p className="text-sm text-blue-100">Active Rules</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
+          <CardContent className="p-6">
+            <Phone className="w-8 h-8 mb-2" />
+            <p className="text-3xl font-bold">
+              {rules.reduce((sum, r) => sum + r.callsRouted, 0)}
+            </p>
+            <p className="text-sm text-green-100">Total Calls Routed</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+          <CardContent className="p-6">
+            <Settings className="w-8 h-8 mb-2" />
+            <p className="text-3xl font-bold">97%</p>
+            <p className="text-sm text-purple-100">Routing Accuracy</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
+          <CardContent className="p-6">
+            <Clock className="w-8 h-8 mb-2" />
+            <p className="text-3xl font-bold">2.3s</p>
+            <p className="text-sm text-orange-100">Avg Routing Time</p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Call Simulator */}
       {showSimulator && (
         <motion.div
@@ -348,43 +385,6 @@ export default function CallRoutingPage() {
               </Card>
             </motion.div>
           ))}
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-          <CardContent className="p-6">
-            <GitBranch className="w-8 h-8 mb-2" />
-            <p className="text-3xl font-bold">{rules.length}</p>
-            <p className="text-sm text-blue-100">Active Rules</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
-          <CardContent className="p-6">
-            <Phone className="w-8 h-8 mb-2" />
-            <p className="text-3xl font-bold">
-              {rules.reduce((sum, r) => sum + r.callsRouted, 0)}
-            </p>
-            <p className="text-sm text-green-100">Total Calls Routed</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-          <CardContent className="p-6">
-            <Settings className="w-8 h-8 mb-2" />
-            <p className="text-3xl font-bold">97%</p>
-            <p className="text-sm text-purple-100">Routing Accuracy</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
-          <CardContent className="p-6">
-            <Clock className="w-8 h-8 mb-2" />
-            <p className="text-3xl font-bold">2.3s</p>
-            <p className="text-sm text-orange-100">Avg Routing Time</p>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

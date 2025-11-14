@@ -42,17 +42,17 @@ export class Case {
   @Column({ type: 'int', nullable: true })
   callDuration: number; // in seconds
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   callStartTime: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   callEndTime: Date;
 
   // Case timeline
   @Column({ type: 'date', nullable: true })
   dueDate: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   resolvedAt: Date;
 
   @Column({ type: 'int', default: 0 })

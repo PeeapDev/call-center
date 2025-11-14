@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Staff } from './staff.entity';
 import { StaffAttendance } from './staff-attendance.entity';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import * as QRCode from 'qrcode';
 
 @Injectable()
@@ -21,13 +21,13 @@ export class StaffService {
     });
   }
 
-  async findOne(id: string): Promise<Staff> {
+  async findOne(id: string): Promise<Staff | null> {
     return this.staffRepository.findOne({ where: { id } });
   }
 
   async create(staffData: Partial<Staff>): Promise<Staff> {
     // Generate unique QR code
-    const qrCodeString = `STAFF-${uuidv4()}`;
+    const qrCodeString = `STAFF-${randomUUID()}`;
     
     // Generate QR code image (base64)
     const qrCodeImage = await QRCode.toDataURL(qrCodeString, {
@@ -49,7 +49,7 @@ export class StaffService {
     return this.staffRepository.save(staff);
   }
 
-  async update(id: string, staffData: Partial<Staff>): Promise<Staff> {
+  async update(id: string, staffData: Partial<Staff>): Promise<Staff | null> {
     await this.staffRepository.update(id, staffData);
     return this.findOne(id);
   }

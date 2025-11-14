@@ -43,12 +43,16 @@ export class CaseController {
 
   @Post()
   async create(@Body() createDto: CreateCaseDto) {
-    return this.caseService.create(createDto);
+    const caseData: any = { ...createDto };
+    if (createDto.dueDate) caseData.dueDate = new Date(createDto.dueDate);
+    return this.caseService.create(caseData);
   }
 
   @Put(':id')
   async update(@Param('id') id: string, @Body() updateDto: UpdateCaseDto) {
-    return this.caseService.update(id, updateDto);
+    const caseData: any = { ...updateDto };
+    if (updateDto.dueDate) caseData.dueDate = new Date(updateDto.dueDate);
+    return this.caseService.update(id, caseData);
   }
 
   @Delete(':id')
