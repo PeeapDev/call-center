@@ -38,6 +38,13 @@ const users = [
     name: 'David Kim',
     role: 'auditor',
   },
+  {
+    id: '6',
+    email: 'citizen@example.com',
+    password: 'citizen123',
+    name: 'John Citizen',
+    role: 'citizen',
+  },
 ];
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
