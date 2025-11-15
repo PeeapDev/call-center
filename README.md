@@ -38,7 +38,7 @@ To democratize access to modern call center technology by providing a cloud-base
 ### Mission
 
 Enable government ministries and public sector organizations in Sierra Leone and beyond to:
-- **Reduce Infrastructure Costs** by up to 80% compared to traditional setups
+  Nice
 - **Improve Citizen Services** through faster response times and better call management
 - **Digitalize Operations** completely, eliminating manual processes
 - **Scale Effortlessly** as call volumes and staff grow
@@ -53,7 +53,6 @@ Enable government ministries and public sector organizations in Sierra Leone and
 #### 1. **Prohibitive Infrastructure Costs**
 Traditional call centers require:
 - Physical server rooms with cooling and power backup
-- Expensive PBX hardware ($10,000 - $50,000+)
 - Multiple servers for redundancy
 - Network infrastructure and cabling
 - Ongoing maintenance contracts
@@ -97,10 +96,10 @@ Our system combines the best of both worlds:
 - No physical servers needed for administration
 - Access from anywhere with internet
 - Automatic updates and maintenance
-- Pay-as-you-grow pricing model
+
 
 #### **Local Telephony Integration** (Maintains Reliability)
-- Direct connection to Sierra Leone's toll-free numbers
+- Direct connection to the ministry toll-free numbers
 - Calls remain on local telecom networks
 - No international routing costs
 - Works with existing phone infrastructure
