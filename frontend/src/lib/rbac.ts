@@ -21,6 +21,7 @@ export interface RolePermissions {
   canViewWebRTC: boolean;
   canViewHR: boolean;
   canManageHR: boolean;
+  canViewAIConfig: boolean;
 }
 
 export const rolePermissions: Record<UserRole, RolePermissions> = {
@@ -43,6 +44,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewWebRTC: true,
     canViewHR: true,
     canManageHR: true,
+    canViewAIConfig: true,
   },
   supervisor: {
     canViewDashboard: true,
@@ -63,6 +65,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewWebRTC: true,
     canViewHR: true,
     canManageHR: false,
+    canViewAIConfig: true,
   },
   agent: {
     canViewDashboard: false, // Agents get their own simplified dashboard
@@ -83,6 +86,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewWebRTC: true,
     canViewHR: false,
     canManageHR: false,
+    canViewAIConfig: false,
   },
   analyst: {
     canViewDashboard: true,
@@ -103,6 +107,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewWebRTC: false,
     canViewHR: false,
     canManageHR: false,
+    canViewAIConfig: false,
   },
   auditor: {
     canViewDashboard: true,
@@ -123,6 +128,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewWebRTC: false,
     canViewHR: false,
     canManageHR: false,
+    canViewAIConfig: false,
   },
   citizen: {
     canViewDashboard: false, // Citizens get their own user dashboard
@@ -143,6 +149,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewWebRTC: false,
     canViewHR: false,
     canManageHR: false,
+    canViewAIConfig: false,
   },
 };
 
@@ -210,6 +217,10 @@ export function getNavigationItems(role: UserRole | undefined) {
 
     if (permissions.canViewContent) {
       items.push({ href: '/dashboard/content', label: 'Content Management', icon: 'Edit' });
+    }
+
+    if (permissions.canViewAIConfig) {
+      items.push({ href: '/dashboard/ai-config', label: 'AI Config', icon: 'Brain' });
     }
 
     if (permissions.canViewSettings) {

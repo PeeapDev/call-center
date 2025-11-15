@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 interface AIKey {
   name: string;
@@ -6,6 +8,16 @@ interface AIKey {
   masked: string;
   isConfigured: boolean;
   envVar: string;
+}
+
+interface TrainingDocument {
+  id: string;
+  title: string;
+  description: string;
+  filename: string;
+  content: string;
+  uploadedAt: Date;
+  fileSize: number;
 }
 
 @Injectable()
@@ -41,8 +53,45 @@ export class AiService {
     },
   ];
 
+  private documents: TrainingDocument[] = [];
+  private readonly uploadsDir = path.join(process.cwd(), 'uploads', 'ai-training');
+
+  constructor() {
+    // Ensure uploads directory exists
+    this.initUploadsDir();
+    // Load existing documents
+    this.loadDocuments();
+  }
+
+  private async initUploadsDir() {
+    try {
+      await fs.mkdir(this.uploadsDir, { recursive: true });
+    } catch (error) {
+      console.error('Failed to create uploads directory:', error);
+    }
+  }
+
+  private async loadDocuments() {
+    try {
+      const metadataPath = path.join(this.uploadsDir, 'metadata.json');
+      const data = await fs.readFile(metadataPath, 'utf-8');
+      this.documents = JSON.parse(data);
+    } catch (error) {
+      // No existing documents, start fresh
+      this.documents = [];
+    }
+  }
+
+  private async saveDocuments() {
+    try {
+      const metadataPath = path.join(this.uploadsDir, 'metadata.json');
+      await fs.writeFile(metadataPath, JSON.stringify(this.documents, null, 2));
+    } catch (error) {
+      console.error('Failed to save documents metadata:', error);
+    }
+  }
+
   async chat(message: string) {
-    // Check if Gemini key is configured
     const geminiKey = process.env.GEMINI_API_KEY;
 
     if (!geminiKey) {
@@ -54,6 +103,20 @@ export class AiService {
     }
 
     try {
+      // Get training context from uploaded documents
+      const trainingContext = await this.getTrainingContext();
+      
+      // Build context-aware prompt
+      let systemPrompt = `You are a helpful AI assistant for the Ministry of Education call center.`;
+      
+      if (trainingContext.documents.length > 0) {
+        systemPrompt += `\n\nYou have access to the following official Ministry documents and information:\n\n`;
+        systemPrompt += trainingContext.context;
+        systemPrompt += `\n\nWhen answering questions, prioritize information from these official documents.`;
+      }
+      
+      systemPrompt += `\n\nIf a question is outside the scope of education or the Ministry of Education, politely respond: "I don't know about that topic, but I'm here to discuss education and the Ministry of Education. If there's anything about education or the Ministry that I can help you with, I'd be glad to assist!"`;
+
       // Call Google Gemini API
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiKey}`,
@@ -65,12 +128,15 @@ export class AiService {
               {
                 parts: [
                   {
-                    text: `You are a helpful AI assistant for the Ministry of Education call center. 
-                    Answer the following question concisely and professionally: ${message}`,
+                    text: `${systemPrompt}\n\nUser question: ${message}`,
                   },
                 ],
               },
             ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 800,
+            },
           }),
         },
       );
@@ -98,10 +164,9 @@ export class AiService {
   }
 
   async getKeys() {
-    // Check which keys are configured
     const keys = this.aiKeys.map((key) => {
       const envValue = process.env[key.envVar];
-      const isConfigured = !!envValue;
+      const isConfigured = !!envValue && envValue.length > 0;
       const masked = isConfigured
         ? `${envValue.substring(0, 4)}${'•'.repeat(12)}${envValue.substring(envValue.length - 4)}`
         : '';
@@ -118,10 +183,6 @@ export class AiService {
   }
 
   async updateKey(keyName: string, value: string) {
-    // In production, this would update the environment variable or secrets manager
-    // For now, we'll just return a success message
-    // You would typically use a service like AWS Secrets Manager, Azure Key Vault, etc.
-
     const key = this.aiKeys.find((k) => k.name === keyName);
 
     if (!key) {
@@ -135,17 +196,130 @@ export class AiService {
       };
     }
 
-    // In a real app, you would:
-    // 1. Encrypt the key
-    // 2. Store it in a secrets manager
-    // 3. Update process.env
-    // 4. Potentially restart the service
-
+    // In production: encrypt and store in secrets manager
     console.log(`Would update ${keyName} to: ${value.substring(0, 4)}...`);
 
     return {
       status: 'ok',
-      message: `${keyName} updated successfully. Restart the backend to apply changes.`,
+      message: `${keyName} updated successfully. Note: In production, restart backend to apply changes.`,
+    };
+  }
+
+  // Document Management
+  async getDocuments() {
+    return {
+      status: 'ok',
+      documents: this.documents.map(doc => ({
+        id: doc.id,
+        title: doc.title,
+        description: doc.description,
+        filename: doc.filename,
+        uploadedAt: doc.uploadedAt,
+        fileSize: doc.fileSize,
+      })),
+    };
+  }
+
+  async uploadDocument(file: Express.Multer.File, title: string, description: string) {
+    if (!file) {
+      return { status: 'error', message: 'No file provided' };
+    }
+
+    try {
+      const id = `doc_${Date.now()}`;
+      const filename = `${id}_${file.originalname}`;
+      const filepath = path.join(this.uploadsDir, filename);
+
+      // Save file
+      await fs.writeFile(filepath, file.buffer);
+
+      // Extract text content (for PDFs, you'd use a PDF parser like pdf-parse)
+      let content = '';
+      if (file.mimetype === 'text/plain') {
+        content = file.buffer.toString('utf-8');
+      } else if (file.mimetype === 'application/pdf') {
+        // For now, just indicate it's a PDF - you'd integrate pdf-parse here
+        content = `[PDF Document: ${title}]\n${description}`;
+      } else {
+        content = description; // Fallback to description
+      }
+
+      const document: TrainingDocument = {
+        id,
+        title,
+        description,
+        filename,
+        content,
+        uploadedAt: new Date(),
+        fileSize: file.size,
+      };
+
+      this.documents.push(document);
+      await this.saveDocuments();
+
+      return {
+        status: 'ok',
+        message: 'Document uploaded successfully',
+        document: {
+          id: document.id,
+          title: document.title,
+          description: document.description,
+          filename: document.filename,
+          uploadedAt: document.uploadedAt,
+          fileSize: document.fileSize,
+        },
+      };
+    } catch (error) {
+      console.error('Document upload error:', error);
+      return {
+        status: 'error',
+        message: 'Failed to upload document',
+      };
+    }
+  }
+
+  async deleteDocument(id: string) {
+    const docIndex = this.documents.findIndex((d) => d.id === id);
+
+    if (docIndex === -1) {
+      return { status: 'error', message: 'Document not found' };
+    }
+
+    try {
+      const doc = this.documents[docIndex];
+      const filepath = path.join(this.uploadsDir, doc.filename);
+
+      // Delete file
+      await fs.unlink(filepath).catch(() => {});
+
+      // Remove from list
+      this.documents.splice(docIndex, 1);
+      await this.saveDocuments();
+
+      return {
+        status: 'ok',
+        message: 'Document deleted successfully',
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Failed to delete document',
+      };
+    }
+  }
+
+  async getTrainingContext() {
+    // Combine all document contents into a training context
+    const context = this.documents
+      .map((doc) => {
+        return `## ${doc.title}\n${doc.description}\n\n${doc.content}\n\n`;
+      })
+      .join('\n---\n\n');
+
+    return {
+      status: 'ok',
+      documents: this.documents.length,
+      context: context || 'No training documents uploaded yet.',
     };
   }
 }
