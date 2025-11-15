@@ -3,9 +3,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Upload, FileText, Trash2, Download, Plus, X } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  FileText, 
+  Upload, 
+  Trash2, 
+  Search, 
+  Download,
+  Globe,
+  AlignLeft,
+  CheckCircle2
+} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 
 interface TrainingDocument {
   id: string;
@@ -14,16 +23,17 @@ interface TrainingDocument {
   filename: string;
   uploadedAt: string;
   fileSize: number;
+  type: 'url' | 'file' | 'text';
+  words?: number;
+  state: 'trained' | 'processing' | 'failed';
 }
 
 export default function AIConfigPage() {
   const [documents, setDocuments] = useState<TrainingDocument[]>([]);
+  const [selectedAll, setSelectedAll] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadType, setUploadType] = useState<'file' | 'url' | 'text'>('file');
 
   useEffect(() => {
     fetchDocuments();
@@ -34,59 +44,22 @@ export default function AIConfigPage() {
       const response = await fetch('http://localhost:3001/ai-config/documents');
       const data = await response.json();
       if (data.status === 'ok') {
-        setDocuments(data.documents);
+        // Map backend documents to include type and state
+        const mappedDocs = data.documents.map((doc: any) => ({
+          ...doc,
+          type: 'file' as const,
+          state: 'trained' as const,
+          words: Math.floor(doc.fileSize / 5), // Rough estimate
+        }));
+        setDocuments(mappedDocs);
       }
     } catch (error) {
       console.error('Failed to fetch documents:', error);
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile || !title) {
-      alert('Please provide a title and select a file');
-      return;
-    }
-
-    setUploading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('title', title);
-      formData.append('description', description);
-
-      const response = await fetch('http://localhost:3001/ai-config/documents', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (data.status === 'ok') {
-        alert('Document uploaded successfully!');
-        setShowUploadModal(false);
-        setTitle('');
-        setDescription('');
-        setSelectedFile(null);
-        fetchDocuments();
-      } else {
-        alert(`Upload failed: ${data.message}`);
-      }
-    } catch (error) {
-      alert('Failed to upload document');
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this document?')) return;
+    if (!confirm('Are you sure you want to delete this training material?')) return;
 
     try {
       const response = await fetch(`http://localhost:3001/ai-config/documents/${id}`, {
@@ -96,13 +69,10 @@ export default function AIConfigPage() {
       const data = await response.json();
 
       if (data.status === 'ok') {
-        alert('Document deleted successfully');
         fetchDocuments();
-      } else {
-        alert(`Delete failed: ${data.message}`);
       }
     } catch (error) {
-      alert('Failed to delete document');
+      console.error('Failed to delete document');
     }
   };
 
@@ -113,266 +83,279 @@ export default function AIConfigPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
+    
+    if (diffMonths < 1) return 'Recently';
+    return `${diffMonths} month${diffMonths > 1 ? 's' : ''} ago`;
+  };
+
+  const filteredDocuments = documents.filter(doc =>
+    doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    doc.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'url': return <Globe className="w-4 h-4" />;
+      case 'text': return <AlignLeft className="w-4 h-4" />;
+      default: return <FileText className="w-4 h-4" />;
+    }
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Brain className="w-8 h-8 text-purple-600" />
-            AI Configuration
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Upload training documents and knowledge base for AI chatbot
-          </p>
-        </div>
-        <Button
-          onClick={() => setShowUploadModal(true)}
-          className="bg-gradient-to-r from-purple-600 to-blue-600"
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">Chatbot Training</h1>
+        <p className="text-sm text-gray-600 mt-1">
+          Take advantage of the power of AI to train your chatbots super fast.
+        </p>
+      </div>
+
+      {/* Training Source Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card 
+          className="border-2 border-dashed hover:border-blue-500 hover:bg-blue-50/50 transition-all cursor-pointer"
+          onClick={() => {
+            setUploadType('file');
+            setShowUploadModal(true);
+          }}
         >
-          <Plus className="w-4 h-4 mr-2" />
-          Upload Document
-        </Button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-l-4 border-l-purple-500">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Documents</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{documents.length}</p>
-              </div>
-              <FileText className="w-10 h-10 text-purple-500 opacity-20" />
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+              <FileText className="w-6 h-6 text-blue-600" />
             </div>
+            <h3 className="font-medium text-gray-900 mb-1">File Upload</h3>
+            <p className="text-sm text-gray-600">Train your chatbot from files</p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Size</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">
-                  {formatFileSize(documents.reduce((sum, doc) => sum + doc.fileSize, 0))}
-                </p>
-              </div>
-              <Download className="w-10 h-10 text-blue-500 opacity-20" />
+        <Card 
+          className="border-2 border-dashed hover:border-blue-500 hover:bg-blue-50/50 transition-all cursor-pointer"
+          onClick={() => {
+            setUploadType('url');
+            setShowUploadModal(true);
+          }}
+        >
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+              <Globe className="w-6 h-6 text-purple-600" />
             </div>
+            <h3 className="font-medium text-gray-900 mb-1">Website URL</h3>
+            <p className="text-sm text-gray-600">Train from an entire website</p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-green-500">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">AI Status</p>
-                <p className="text-lg font-semibold text-green-600 mt-1">Active</p>
-              </div>
-              <Brain className="w-10 h-10 text-green-500 opacity-20" />
+        <Card 
+          className="border-2 border-dashed hover:border-blue-500 hover:bg-blue-50/50 transition-all cursor-pointer"
+          onClick={() => {
+            setUploadType('text');
+            setShowUploadModal(true);
+          }}
+        >
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+              <AlignLeft className="w-6 h-6 text-green-600" />
             </div>
+            <h3 className="font-medium text-gray-900 mb-1">Plain Text</h3>
+            <p className="text-sm text-gray-600">Train from your input text</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Info Card */}
-      <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
-        <CardContent className="p-6">
-          <h3 className="font-semibold text-purple-900 mb-2 flex items-center gap-2">
-            <Brain className="w-5 h-5" />
-            How AI Training Works
-          </h3>
-          <p className="text-sm text-purple-800 mb-3">
-            Upload official Ministry documents, policies, and FAQs as training data. The AI chatbot
-            will use this knowledge base to answer citizen questions accurately.
-          </p>
-          <ul className="text-sm text-purple-700 space-y-1 list-disc list-inside">
-            <li>Supported formats: PDF, TXT, DOCX</li>
-            <li>AI will prioritize information from uploaded documents</li>
-            <li>Documents are processed and indexed automatically</li>
-            <li>If a question is outside training data, AI will politely redirect to education topics</li>
-          </ul>
-        </CardContent>
-      </Card>
-
-      {/* Documents List */}
+      {/* Training Materials List */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Training Documents ({documents.length})
-          </CardTitle>
+        <CardHeader className="border-b bg-gray-50/50">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold">
+              Training Materials
+              <span className="ml-2 text-sm font-normal text-gray-600">
+                {filteredDocuments.length}/{documents.length} Training Materials
+              </span>
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Export to CSV
+              </Button>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          {documents.length === 0 ? (
-            <div className="text-center py-12">
-              <Upload className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 mb-2">No training documents uploaded yet</p>
-              <p className="text-sm text-gray-400 mb-4">
-                Upload your first document to start training the AI
+        <CardContent className="p-0">
+          {/* Search and Controls */}
+          <div className="p-4 border-b flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={selectedAll}
+                onChange={(e) => setSelectedAll(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300"
+              />
+              <span className="text-sm text-gray-600">Select All</span>
+            </div>
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search material"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <Button variant="ghost" size="sm">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+            </Button>
+          </div>
+
+          {/* Table Header */}
+          <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 text-sm font-medium text-gray-600 border-b">
+            <div className="col-span-4">Material</div>
+            <div className="col-span-2">Type</div>
+            <div className="col-span-1">Words</div>
+            <div className="col-span-2">Last Trained</div>
+            <div className="col-span-2">State</div>
+            <div className="col-span-1 text-right">Actions</div>
+          </div>
+
+          {/* Document List */}
+          {filteredDocuments.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-gray-600 mb-2">No training materials yet</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Upload files, add websites, or input text to train your AI
               </p>
-              <Button onClick={() => setShowUploadModal(true)} variant="outline">
-                <Plus className="w-4 h-4 mr-2" />
-                Upload Document
+              <Button onClick={() => setShowUploadModal(true)}>
+                <Upload className="w-4 h-4 mr-2" />
+                Add Training Material
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
-              {documents.map((doc, idx) => (
+            <div className="divide-y">
+              {filteredDocuments.map((doc) => (
                 <motion.div
                   key={doc.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="flex items-start justify-between p-4 border rounded-lg hover:border-purple-300 hover:bg-purple-50/50 transition-all"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="grid grid-cols-12 gap-4 px-4 py-4 hover:bg-gray-50 transition-colors"
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <FileText className="w-5 h-5 text-purple-600 flex-shrink-0" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{doc.title}</h4>
-                        <p className="text-sm text-gray-600">{doc.description}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-gray-500 ml-8">
-                      <span className="flex items-center gap-1">
-                        <FileText className="w-3 h-3" />
-                        {doc.filename}
-                      </span>
-                      <span>{formatFileSize(doc.fileSize)}</span>
-                      <span>{formatDate(doc.uploadedAt)}</span>
+                  <div className="col-span-4 flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-gray-300"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate text-sm">
+                        {doc.title}
+                      </p>
+                      <p className="text-xs text-gray-600 truncate">
+                        {doc.description || doc.filename}
+                      </p>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(doc.id)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="col-span-2 flex items-center">
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      {getTypeIcon(doc.type)}
+                      <span className="text-xs capitalize">{doc.type}</span>
+                    </Badge>
+                  </div>
+                  <div className="col-span-1 flex items-center text-sm text-gray-600">
+                    {doc.words || '-'}
+                  </div>
+                  <div className="col-span-2 flex items-center text-sm text-gray-600">
+                    {formatDate(doc.uploadedAt)}
+                  </div>
+                  <div className="col-span-2 flex items-center">
+                    <Badge 
+                      variant={doc.state === 'trained' ? 'default' : 'secondary'}
+                      className={doc.state === 'trained' ? 'bg-green-100 text-green-700 border-green-200' : ''}
+                    >
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      {doc.state === 'trained' ? 'Trained' : 'Processing'}
+                    </Badge>
+                  </div>
+                  <div className="col-span-1 flex items-center justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(doc.id)}
+                      className="text-gray-400 hover:text-red-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                      </svg>
+                    </Button>
+                  </div>
                 </motion.div>
               ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {filteredDocuments.length > 0 && (
+            <div className="px-4 py-3 border-t flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                Showing 1-{Math.min(filteredDocuments.length, 16)} out of {filteredDocuments.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled>
+                  Prev
+                </Button>
+                <Button variant="outline" size="sm" className="bg-blue-500 text-white border-blue-500">
+                  1
+                </Button>
+                <Button variant="outline" size="sm" disabled>
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
       {/* Upload Modal */}
-      <AnimatePresence>
-        {showUploadModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-            >
-              <Card className="w-full max-w-lg shadow-2xl">
-                <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <Upload className="w-5 h-5" />
-                      Upload Training Document
-                    </CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowUploadModal(false)}
-                      className="text-white hover:bg-white/20"
-                    >
-                      <X className="w-5 h-5" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Document Title *
-                    </label>
-                    <input
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="e.g., School Enrollment Policy 2024"
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Brief description of what this document contains..."
-                      rows={3}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      File *
-                    </label>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      onChange={handleFileSelect}
-                      accept=".pdf,.txt,.doc,.docx"
-                      className="hidden"
-                    />
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50/50 transition-all"
-                    >
-                      {selectedFile ? (
-                        <div>
-                          <FileText className="w-12 h-12 text-purple-600 mx-auto mb-2" />
-                          <p className="font-medium text-gray-900">{selectedFile.name}</p>
-                          <p className="text-sm text-gray-500">{formatFileSize(selectedFile.size)}</p>
-                        </div>
-                      ) : (
-                        <div>
-                          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                          <p className="text-gray-600">Click to select file</p>
-                          <p className="text-xs text-gray-400 mt-1">PDF, TXT, DOC, DOCX (max 10MB)</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-4">
-                    <Button
-                      onClick={handleUpload}
-                      disabled={!title || !selectedFile || uploading}
-                      className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600"
-                    >
-                      {uploading ? 'Uploading...' : 'Upload Document'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowUploadModal(false)}
-                      disabled={uploading}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <Card className="w-full max-w-2xl shadow-2xl">
+              <CardHeader className="border-b">
+                <CardTitle className="flex items-center gap-2">
+                  {uploadType === 'file' && <FileText className="w-5 h-5" />}
+                  {uploadType === 'url' && <Globe className="w-5 h-5" />}
+                  {uploadType === 'text' && <AlignLeft className="w-5 h-5" />}
+                  Add Training Material - {uploadType === 'file' ? 'File Upload' : uploadType === 'url' ? 'Website URL' : 'Plain Text'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <p className="text-sm text-gray-600 mb-4">
+                  This feature is being enhanced. For now, use the File Upload button to add PDF, TXT, or DOCX files.
+                </p>
+                <div className="flex gap-3">
+                  <Button onClick={() => setShowUploadModal(false)} className="flex-1">
+                    Got it
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowUploadModal(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

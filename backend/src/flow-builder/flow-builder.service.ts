@@ -178,7 +178,7 @@ export class FlowBuilderService {
 
     // If it's a menu node, find the option
     if (currentNode.options) {
-      const option = currentNode.options.find((opt) => opt.key === input);
+      const option = currentNode.options.find((opt: any) => opt.key === input);
       if (option) {
         const nextNode = this.getNodeFromActiveFlow(option.nextNode);
         return {

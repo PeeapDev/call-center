@@ -109,7 +109,7 @@ export class AiService {
       // Build context-aware prompt
       let systemPrompt = `You are a helpful AI assistant for the Ministry of Education call center.`;
       
-      if (trainingContext.documents.length > 0) {
+      if (trainingContext.documents > 0) {
         systemPrompt += `\n\nYou have access to the following official Ministry documents and information:\n\n`;
         systemPrompt += trainingContext.context;
         systemPrompt += `\n\nWhen answering questions, prioritize information from these official documents.`;
@@ -220,7 +220,7 @@ export class AiService {
     };
   }
 
-  async uploadDocument(file: Express.Multer.File, title: string, description: string) {
+  async uploadDocument(file: any, title: string, description: string) {
     if (!file) {
       return { status: 'error', message: 'No file provided' };
     }

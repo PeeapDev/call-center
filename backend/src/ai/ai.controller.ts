@@ -33,7 +33,7 @@ export class AiController {
   @Post('ai-config/documents')
   @UseInterceptors(FileInterceptor('file'))
   async uploadDocument(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: any,
     @Body() body: { title: string; description: string },
   ) {
     return this.aiService.uploadDocument(file, body.title, body.description);
