@@ -108,17 +108,8 @@ Our system combines the best of both worlds:
 
 ### How This Saves Money
 
-| Traditional Setup | Our Cloud Solution | Savings |
-|-------------------|-------------------|---------|
-| Physical Servers: $20,000 | Cloud Hosting: $50/month | ~$19,400 first year |
-| PBX Hardware: $15,000 | Software License: $0 (Open Source) | $15,000 |
-| IT Staff: $24,000/year | Managed Updates: Included | $24,000/year |
-| Office Space: $6,000/year | Remote Work: Enabled | $6,000/year |
-| **Total Year 1: ~$65,000** | **Total Year 1: ~$600** | **~$64,400 (99% savings)** |
-
 ### Key Benefits
-
-✅ **Cost-Effective**: Eliminate 90%+ of infrastructure costs  
+ 
 ✅ **Scalable**: Add agents without hardware purchases  
 ✅ **Accessible**: Work from anywhere with internet  
 ✅ **Integrated**: Connects local phones with digital tools  
