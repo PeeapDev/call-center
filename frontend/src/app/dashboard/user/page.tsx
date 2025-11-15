@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Phone, History, FileText, HelpCircle, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import AIChatWidget from '@/components/AIChatWidget';
 
 export default function UserDashboardPage() {
   return (
@@ -140,6 +141,9 @@ export default function UserDashboardPage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* AI Chat Widget */}
+      <AIChatWidget />
     </div>
   );
 }
