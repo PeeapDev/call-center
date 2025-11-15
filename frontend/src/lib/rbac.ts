@@ -1,6 +1,6 @@
 // Role-Based Access Control Helper
 
-export type UserRole = 'admin' | 'supervisor' | 'agent' | 'analyst' | 'auditor';
+export type UserRole = 'admin' | 'supervisor' | 'agent' | 'analyst' | 'auditor' | 'citizen';
 
 export interface RolePermissions {
   canViewDashboard: boolean;
@@ -124,6 +124,26 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewHR: false,
     canManageHR: false,
   },
+  citizen: {
+    canViewDashboard: false, // Citizens get their own user dashboard
+    canViewMyCalls: true,
+    canViewRouting: false,
+    canEditRouting: false,
+    canViewCallFlowBuilder: false,
+    canViewAllCalls: false,
+    canViewAgents: false,
+    canManageAgents: false,
+    canViewRecordings: false,
+    canDownloadRecordings: false,
+    canViewAnalytics: false,
+    canViewContent: false,
+    canEditContent: false,
+    canViewSettings: false,
+    canEditSettings: false,
+    canViewWebRTC: false,
+    canViewHR: false,
+    canManageHR: false,
+  },
 };
 
 export function hasPermission(role: UserRole | undefined, permission: keyof RolePermissions): boolean {
@@ -143,6 +163,12 @@ export function getNavigationItems(role: UserRole | undefined) {
     items.push(
       { href: '/dashboard/my-calls', label: 'My Calls', icon: 'PhoneCall' },
       { href: '/dashboard/webrtc-setup', label: 'Phone Setup', icon: 'Settings' },
+    );
+  } else if (role === 'citizen' as UserRole) {
+    // Citizens see their own simple navigation
+    items.push(
+      { href: '/dashboard/user', label: 'My Portal', icon: 'Home' },
+      { href: '/dashboard/my-calls', label: 'My Calls', icon: 'PhoneCall' },
     );
   } else {
     // Admin/Supervisor/Analyst/Auditor navigation
