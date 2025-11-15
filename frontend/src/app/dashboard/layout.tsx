@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { Home, Phone, Users, FileAudio, Settings, LogOut, BarChart3, Edit, GitBranch, PhoneCall, Globe, Workflow, Briefcase } from 'lucide-react';
+import { Home, Phone, Users, FileAudio, Settings, LogOut, BarChart3, Edit, GitBranch, PhoneCall, Globe, Workflow, Briefcase, MessageSquare, User, Bell, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getNavigationItems, UserRole } from '@/lib/rbac';
@@ -78,6 +78,10 @@ export default function DashboardLayout({
     Settings,
     Globe,
     Briefcase,
+    MessageSquare,
+    User,
+    Bell,
+    FileText,
   };
 
   return (
