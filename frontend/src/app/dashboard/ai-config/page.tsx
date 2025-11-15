@@ -34,6 +34,10 @@ export default function AIConfigPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadType, setUploadType] = useState<'file' | 'url' | 'text'>('file');
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
 
   useEffect(() => {
     fetchDocuments();
@@ -73,6 +77,50 @@ export default function AIConfigPage() {
       }
     } catch (error) {
       console.error('Failed to delete document');
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile || !title) {
+      alert('Please provide a title and select a file');
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('title', title);
+      formData.append('description', description);
+
+      const response = await fetch('http://localhost:3001/ai-config/documents', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'ok') {
+        alert('Document uploaded successfully!');
+        setShowUploadModal(false);
+        setTitle('');
+        setDescription('');
+        setSelectedFile(null);
+        fetchDocuments();
+      } else {
+        alert(`Upload failed: ${data.message}`);
+      }
+    } catch (error) {
+      alert('Failed to upload document');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -339,18 +387,103 @@ export default function AIConfigPage() {
                   Add Training Material - {uploadType === 'file' ? 'File Upload' : uploadType === 'url' ? 'Website URL' : 'Plain Text'}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
-                <p className="text-sm text-gray-600 mb-4">
-                  This feature is being enhanced. For now, use the File Upload button to add PDF, TXT, or DOCX files.
-                </p>
-                <div className="flex gap-3">
-                  <Button onClick={() => setShowUploadModal(false)} className="flex-1">
-                    Got it
-                  </Button>
-                  <Button variant="outline" onClick={() => setShowUploadModal(false)}>
-                    Cancel
-                  </Button>
-                </div>
+              <CardContent className="p-6 space-y-4">
+                {uploadType === 'file' ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Document Title *
+                      </label>
+                      <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="e.g., School Enrollment Policy 2024"
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Description
+                      </label>
+                      <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Brief description of what this document contains..."
+                        rows={3}
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        File * (PDF, TXT, DOCX - max 10MB)
+                      </label>
+                      <div
+                        onClick={() => document.getElementById('file-input')?.click()}
+                        className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50/50 transition-all"
+                      >
+                        {selectedFile ? (
+                          <div>
+                            <FileText className="w-12 h-12 text-blue-600 mx-auto mb-2" />
+                            <p className="font-medium text-gray-900">{selectedFile.name}</p>
+                            <p className="text-sm text-gray-500">{formatFileSize(selectedFile.size)}</p>
+                          </div>
+                        ) : (
+                          <div>
+                            <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                            <p className="text-gray-600">Click to select file</p>
+                            <p className="text-xs text-gray-400 mt-1">PDF, TXT, DOCX (max 10MB)</p>
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        id="file-input"
+                        type="file"
+                        onChange={handleFileSelect}
+                        accept=".pdf,.txt,.doc,.docx"
+                        className="hidden"
+                      />
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                      <Button
+                        onClick={handleUpload}
+                        disabled={!title || !selectedFile || uploading}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700"
+                      >
+                        {uploading ? 'Uploading...' : 'Upload Document'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowUploadModal(false);
+                          setTitle('');
+                          setDescription('');
+                          setSelectedFile(null);
+                        }}
+                        disabled={uploading}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600 mb-4">
+                      {uploadType === 'url' ? 'Website URL scraping' : 'Plain text input'} is coming soon. For now, use File Upload.
+                    </p>
+                    <div className="flex gap-3">
+                      <Button onClick={() => setUploadType('file')} className="flex-1">
+                        Switch to File Upload
+                      </Button>
+                      <Button variant="outline" onClick={() => setShowUploadModal(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </motion.div>
