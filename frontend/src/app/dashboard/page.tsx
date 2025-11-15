@@ -103,11 +103,13 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  // Redirect agents to their simplified dashboard
+  // Redirect agents and citizens to their dashboards
   useEffect(() => {
     const user = session?.user as any;
     if (user?.role === 'agent') {
       router.push('/dashboard/agent');
+    } else if (user?.role === 'citizen') {
+      router.push('/dashboard/user');
     }
   }, [session, router]);
 
