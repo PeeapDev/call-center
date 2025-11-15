@@ -112,17 +112,17 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
                   <p className="font-medium text-gray-900">Database</p>
-                  <p className="text-sm text-gray-500">PostgreSQL</p>
+                  <p className="text-sm text-gray-500">SQLite</p>
                 </div>
-                <Badge variant="secondary">Pending</Badge>
+                <Badge variant="default" className="bg-green-600">Active</Badge>
               </div>
 
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
-                  <p className="font-medium text-gray-900">Storage</p>
-                  <p className="text-sm text-gray-500">MinIO S3</p>
+                  <p className="font-medium text-gray-900">File Storage</p>
+                  <p className="text-sm text-gray-500">Local Disk</p>
                 </div>
-                <Badge variant="secondary">Pending</Badge>
+                <Badge variant="default" className="bg-green-600">Active</Badge>
               </div>
             </div>
           </CardContent>
@@ -311,16 +311,21 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {[
-              { label: 'Authentication', desc: 'OAuth/OIDC via Keycloak' },
-              { label: 'Role-Based Access', desc: 'Admin, Agent, Citizen, etc.' },
-              { label: 'Audit Logging', desc: 'Track all system actions' },
+              { label: 'Authentication', desc: 'JWT-based authentication', status: 'active' },
+              { label: 'Role-Based Access', desc: 'Admin, Agent, Citizen, etc.', status: 'active' },
+              { label: 'Audit Logging', desc: 'Track all system actions', status: 'pending' },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between p-3 border rounded-lg">
                 <div>
                   <p className="font-medium text-sm text-gray-900">{item.label}</p>
                   <p className="text-xs text-gray-500">{item.desc}</p>
                 </div>
-                <Badge variant="secondary">Pending</Badge>
+                <Badge 
+                  variant={item.status === 'active' ? 'default' : 'secondary'}
+                  className={item.status === 'active' ? 'bg-green-600' : ''}
+                >
+                  {item.status === 'active' ? 'Active' : 'Pending'}
+                </Badge>
               </div>
             ))}
           </CardContent>
