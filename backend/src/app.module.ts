@@ -9,6 +9,7 @@ import { ApiKeysModule } from './api-keys/api-keys.module';
 import { RoutingModule } from './routing/routing.module';
 import { StaffModule } from './staff/staff.module';
 import { CaseModule } from './cases/case.module';
+import { CallsModule } from './calls/calls.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { CaseModule } from './cases/case.module';
     RoutingModule,
     StaffModule,
     CaseModule,
+    CallsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

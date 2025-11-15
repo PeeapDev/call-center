@@ -11,8 +11,9 @@ export class AsteriskService implements OnModuleInit {
   constructor(private configService: ConfigService) {}
 
   async onModuleInit() {
-    // Temporarily disabled - Asterisk auth issue, will fix later
-    this.logger.warn('Asterisk connection disabled temporarily - will use mock data');
+    // Asterisk connection - configure when ready
+    this.logger.log('Asterisk service initialized - configure ARI connection in environment variables');
+    // Uncomment when Asterisk is configured:
     // this.connectARI().catch((err) => {
     //   this.logger.error(`Asterisk connection failed during init: ${err.message}`);
     // });

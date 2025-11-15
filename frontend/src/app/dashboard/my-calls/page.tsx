@@ -17,6 +17,7 @@ import {
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import AgentCallInterface from '@/components/AgentCallInterface';
+import RealTimeCallNotifications from '@/components/RealTimeCallNotifications';
 
 interface CallHistory {
   id: string;
@@ -181,7 +182,12 @@ export default function MyCallsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
+          className="space-y-6"
         >
+          {/* Real-Time Call Notifications with WebRTC */}
+          <RealTimeCallNotifications />
+          
+          {/* Regular Call Interface */}
           <AgentCallInterface />
         </motion.div>
       )}
