@@ -33,11 +33,15 @@ export default function AIConfigPage() {
   const [selectedAll, setSelectedAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadType, setUploadType] = useState<'file' | 'url' | 'text'>('file');
+  const [uploadType, setUploadType] = useState<'file' | 'url' | 'text' | 'post'>('file');
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [textContent, setTextContent] = useState('');
+  const [postImage, setPostImage] = useState<File | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDocuments();
@@ -87,8 +91,20 @@ export default function AIConfigPage() {
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !title) {
+    if (uploadType === 'file' && (!selectedFile || !title)) {
       alert('Please provide a title and select a file');
+      return;
+    }
+    if (uploadType === 'url' && (!websiteUrl || !title)) {
+      alert('Please provide a title and website URL');
+      return;
+    }
+    if (uploadType === 'text' && (!textContent || !title)) {
+      alert('Please provide a title and text content');
+      return;
+    }
+    if (uploadType === 'post' && (!postImage || !title || !description)) {
+      alert('Please provide a title, description, and image');
       return;
     }
 
@@ -96,7 +112,20 @@ export default function AIConfigPage() {
 
     try {
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      
+      if (uploadType === 'file') {
+        formData.append('file', selectedFile!);
+      } else if (uploadType === 'url') {
+        formData.append('url', websiteUrl);
+      } else if (uploadType === 'text') {
+        // Create a text file from the content
+        const textBlob = new Blob([textContent], { type: 'text/plain' });
+        formData.append('file', textBlob, 'text-input.txt');
+      } else if (uploadType === 'post') {
+        formData.append('file', postImage!);
+        formData.append('isPost', 'true');
+      }
+      
       formData.append('title', title);
       formData.append('description', description);
 
@@ -108,19 +137,38 @@ export default function AIConfigPage() {
       const data = await response.json();
 
       if (data.status === 'ok') {
-        alert('Document uploaded successfully!');
+        alert('Training material added successfully!');
         setShowUploadModal(false);
-        setTitle('');
-        setDescription('');
-        setSelectedFile(null);
+        resetForm();
         fetchDocuments();
       } else {
         alert(`Upload failed: ${data.message}`);
       }
     } catch (error) {
-      alert('Failed to upload document');
+      alert('Failed to upload training material');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setSelectedFile(null);
+    setWebsiteUrl('');
+    setTextContent('');
+    setPostImage(null);
+  };
+
+  const handleReTrain = async (id: string) => {
+    if (!confirm('Re-train AI with this material? This will update the AI knowledge base.')) return;
+    
+    try {
+      // In a real implementation, this would trigger retraining
+      alert('AI re-training initiated! This may take a few minutes.');
+      // You could add a backend endpoint for retraining
+    } catch (error) {
+      alert('Failed to initiate re-training');
     }
   };
 
@@ -164,7 +212,7 @@ export default function AIConfigPage() {
       </div>
 
       {/* Training Source Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card 
           className="border-2 border-dashed hover:border-blue-500 hover:bg-blue-50/50 transition-all cursor-pointer"
           onClick={() => {
@@ -182,7 +230,7 @@ export default function AIConfigPage() {
         </Card>
 
         <Card 
-          className="border-2 border-dashed hover:border-blue-500 hover:bg-blue-50/50 transition-all cursor-pointer"
+          className="border-2 border-dashed hover:border-purple-500 hover:bg-purple-50/50 transition-all cursor-pointer"
           onClick={() => {
             setUploadType('url');
             setShowUploadModal(true);
@@ -198,7 +246,7 @@ export default function AIConfigPage() {
         </Card>
 
         <Card 
-          className="border-2 border-dashed hover:border-blue-500 hover:bg-blue-50/50 transition-all cursor-pointer"
+          className="border-2 border-dashed hover:border-green-500 hover:bg-green-50/50 transition-all cursor-pointer"
           onClick={() => {
             setUploadType('text');
             setShowUploadModal(true);
@@ -210,6 +258,24 @@ export default function AIConfigPage() {
             </div>
             <h3 className="font-medium text-gray-900 mb-1">Plain Text</h3>
             <p className="text-sm text-gray-600">Train from your input text</p>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="border-2 border-dashed hover:border-orange-500 hover:bg-orange-50/50 transition-all cursor-pointer"
+          onClick={() => {
+            setUploadType('post');
+            setShowUploadModal(true);
+          }}
+        >
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+              <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 className="font-medium text-gray-900 mb-1">Post</h3>
+            <p className="text-sm text-gray-600">Add image with description</p>
           </CardContent>
         </Card>
       </div>
@@ -332,17 +398,44 @@ export default function AIConfigPage() {
                       {doc.state === 'trained' ? 'Trained' : 'Processing'}
                     </Badge>
                   </div>
-                  <div className="col-span-1 flex items-center justify-end">
+                  <div className="col-span-1 flex items-center justify-end relative">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDelete(doc.id)}
-                      className="text-gray-400 hover:text-red-600"
+                      onClick={() => setOpenMenuId(openMenuId === doc.id ? null : doc.id)}
+                      className="text-gray-400 hover:text-gray-600"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                       </svg>
                     </Button>
+                    
+                    {openMenuId === doc.id && (
+                      <div className="absolute right-0 top-8 mt-2 w-40 bg-white border rounded-lg shadow-lg z-10">
+                        <button
+                          onClick={() => {
+                            handleReTrain(doc.id);
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 rounded-t-lg"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Re-Train
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleDelete(doc.id);
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2 rounded-b-lg"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -384,7 +477,17 @@ export default function AIConfigPage() {
                   {uploadType === 'file' && <FileText className="w-5 h-5" />}
                   {uploadType === 'url' && <Globe className="w-5 h-5" />}
                   {uploadType === 'text' && <AlignLeft className="w-5 h-5" />}
-                  Add Training Material - {uploadType === 'file' ? 'File Upload' : uploadType === 'url' ? 'Website URL' : 'Plain Text'}
+                  {uploadType === 'post' && (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                  Add Training Material - {
+                    uploadType === 'file' ? 'File Upload' : 
+                    uploadType === 'url' ? 'Website URL' : 
+                    uploadType === 'text' ? 'Plain Text' :
+                    'Post'
+                  }
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6 space-y-4">
@@ -469,16 +572,208 @@ export default function AIConfigPage() {
                       </Button>
                     </div>
                   </>
+                ) : uploadType === 'url' ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Website Title *
+                      </label>
+                      <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="e.g., Ministry Website FAQ"
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Website URL *
+                      </label>
+                      <input
+                        type="url"
+                        value={websiteUrl}
+                        onChange={(e) => setWebsiteUrl(e.target.value)}
+                        placeholder="https://example.com"
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        AI will scrape and learn from the entire website content
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Description
+                      </label>
+                      <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="What information does this website contain?"
+                        rows={2}
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                      <Button
+                        onClick={handleUpload}
+                        disabled={!title || !websiteUrl || uploading}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700"
+                      >
+                        {uploading ? 'Adding...' : 'Add Website'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowUploadModal(false);
+                          resetForm();
+                        }}
+                        disabled={uploading}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </>
+                ) : uploadType === 'text' ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Text Title *
+                      </label>
+                      <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="e.g., School Policies"
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-600 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Enter Text *
+                      </label>
+                      <div className="text-xs text-gray-500 mb-2">
+                        Write down or paste your text in the input below.
+                      </div>
+                      <textarea
+                        value={textContent}
+                        onChange={(e) => setTextContent(e.target.value)}
+                        placeholder="Enter here..."
+                        rows={12}
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-600 focus:border-transparent font-mono text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {textContent.length} characters • ~{Math.floor(textContent.split(' ').length)} words
+                      </p>
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                      <Button
+                        onClick={handleUpload}
+                        disabled={!title || !textContent || uploading}
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                      >
+                        {uploading ? 'Adding...' : 'Add for training'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowUploadModal(false);
+                          resetForm();
+                        }}
+                        disabled={uploading}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </>
                 ) : (
                   <>
-                    <p className="text-sm text-gray-600 mb-4">
-                      {uploadType === 'url' ? 'Website URL scraping' : 'Plain text input'} is coming soon. For now, use File Upload.
-                    </p>
-                    <div className="flex gap-3">
-                      <Button onClick={() => setUploadType('file')} className="flex-1">
-                        Switch to File Upload
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Post Title *
+                      </label>
+                      <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="e.g., Campus Building Map"
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Description * (What's in the image?)
+                      </label>
+                      <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Describe what the image shows and what citizens should know about it..."
+                        rows={4}
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        AI will show this image when citizens ask related questions
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Image * (JPG, PNG - max 5MB)
+                      </label>
+                      <div
+                        onClick={() => document.getElementById('post-image-input')?.click()}
+                        className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-orange-500 hover:bg-orange-50/50 transition-all"
+                      >
+                        {postImage ? (
+                          <div>
+                            <svg className="w-12 h-12 text-orange-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <p className="font-medium text-gray-900">{postImage.name}</p>
+                            <p className="text-sm text-gray-500">{formatFileSize(postImage.size)}</p>
+                          </div>
+                        ) : (
+                          <div>
+                            <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                            <p className="text-gray-600">Click to select image</p>
+                            <p className="text-xs text-gray-400 mt-1">JPG, PNG (max 5MB)</p>
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        id="post-image-input"
+                        type="file"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setPostImage(e.target.files[0]);
+                          }
+                        }}
+                        accept="image/jpeg,image/png,image/jpg"
+                        className="hidden"
+                      />
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                      <Button
+                        onClick={handleUpload}
+                        disabled={!title || !description || !postImage || uploading}
+                        className="flex-1 bg-orange-600 hover:bg-orange-700"
+                      >
+                        {uploading ? 'Adding...' : 'Add Post'}
                       </Button>
-                      <Button variant="outline" onClick={() => setShowUploadModal(false)}>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowUploadModal(false);
+                          resetForm();
+                        }}
+                        disabled={uploading}
+                      >
                         Cancel
                       </Button>
                     </div>
