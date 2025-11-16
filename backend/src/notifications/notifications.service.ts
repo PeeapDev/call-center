@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import Database from 'better-sqlite3';
 import * as path from 'path';
+import { NotificationsGateway } from './notifications.gateway';
 
 export interface Notification {
   id: string;
@@ -16,7 +17,10 @@ export interface Notification {
 export class NotificationsService {
   private db: Database.Database;
 
-  constructor() {
+  constructor(
+    @Inject(forwardRef(() => NotificationsGateway))
+    private notificationsGateway: NotificationsGateway,
+  ) {
     const dbPath = path.join(__dirname, '../../callcenter.db');
     this.db = new Database(dbPath);
     this.initializeDatabase();
@@ -63,7 +67,17 @@ export class NotificationsService {
       now,
     );
 
-    return this.getNotificationById(id);
+    const notification = await this.getNotificationById(id);
+
+    // 🔔 Broadcast to all connected clients via WebSocket
+    try {
+      this.notificationsGateway.broadcastNotification(notification);
+      console.log('✅ Broadcasted notification via WebSocket');
+    } catch (error) {
+      console.error('Failed to broadcast notification:', error);
+    }
+
+    return notification;
   }
 
   async getNotifications(status?: 'unread' | 'read'): Promise<Notification[]> {

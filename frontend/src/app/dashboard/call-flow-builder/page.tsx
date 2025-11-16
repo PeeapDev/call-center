@@ -34,6 +34,7 @@ import {
   PhoneOff,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { initializeDefaultTemplates } from '@/lib/defaultFlowTemplates';
 
 const nodeTypes = [
   { type: 'start', label: 'Start Call', icon: Phone, color: 'bg-green-500' },
@@ -82,11 +83,9 @@ export default function CallFlowBuilderPage() {
   const [savedFlows, setSavedFlows] = useState<any[]>([]);
 
   useEffect(() => {
-    // Load saved flows from localStorage
-    const saved = localStorage.getItem('callFlows');
-    if (saved) {
-      setSavedFlows(JSON.parse(saved));
-    }
+    // Initialize default templates and load saved flows
+    const flows = initializeDefaultTemplates();
+    setSavedFlows(flows);
   }, []);
 
   const onConnect = useCallback(
