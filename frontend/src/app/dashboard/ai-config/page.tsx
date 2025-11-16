@@ -14,7 +14,8 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { API_ENDPOINTS, buildApiUrl } from '@/lib/config';
 
 interface TrainingDocument {
   id: string;
@@ -49,7 +50,7 @@ export default function AIConfigPage() {
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch('http://localhost:3001/ai-config/documents');
+      const response = await fetch(API_ENDPOINTS.aiDocuments);
       const data = await response.json();
       if (data.status === 'ok') {
         // Map backend documents to include type and state
@@ -70,7 +71,7 @@ export default function AIConfigPage() {
     if (!confirm('Are you sure you want to delete this training material?')) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/ai-config/documents/${id}`, {
+      const response = await fetch(buildApiUrl(`/ai/documents/${id}`), {
         method: 'DELETE',
       });
 

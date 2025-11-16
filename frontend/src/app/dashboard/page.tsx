@@ -22,6 +22,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { API_ENDPOINTS } from '@/lib/config';
 
 // Mock data for demonstration
 const mockActiveCalls = [
@@ -115,7 +116,7 @@ export default function DashboardPage() {
 
   // Fetch backend health status
   useEffect(() => {
-    fetch('http://localhost:3001/health')
+    fetch(API_ENDPOINTS.health)
       .then((res) => res.json())
       .then((data) => setBackendHealth(data))
       .catch((err) => console.error('Backend not reachable:', err));

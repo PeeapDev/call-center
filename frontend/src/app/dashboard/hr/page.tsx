@@ -9,6 +9,7 @@ import {
   CheckCircle, XCircle, Copy, Eye, EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_ENDPOINTS, buildApiUrl } from '@/lib/config';
 
 interface User {
   id: string;
@@ -52,7 +53,7 @@ export default function HREnhancedPage() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:3001/hr/users');
+      const response = await fetch(API_ENDPOINTS.hrUsers);
       const data = await response.json();
       if (data.status === 'ok') {
         setUsers(data.users);
@@ -71,7 +72,7 @@ export default function HREnhancedPage() {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/hr/users', {
+      const response = await fetch(API_ENDPOINTS.hrUsers, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -106,7 +107,7 @@ export default function HREnhancedPage() {
     if (!confirm('Regenerate SIP credentials? Old credentials will no longer work.')) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/hr/users/${userId}/regenerate-sip`, {
+      const response = await fetch(buildApiUrl(`/hr/users/${userId}/regenerate-sip`), {
         method: 'POST',
       });
 
@@ -128,7 +129,7 @@ export default function HREnhancedPage() {
     if (!confirm('Are you sure you want to delete this user?')) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/hr/users/${userId}`, {
+      const response = await fetch(buildApiUrl(`/hr/users/${userId}`), {
         method: 'DELETE',
       });
 

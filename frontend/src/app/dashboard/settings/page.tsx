@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Settings, Server, Database, Bell, Shield, Users, Key, Eye, EyeOff, Save, Brain } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { API_ENDPOINTS, buildApiUrl } from '@/lib/config';
 
 interface ApiKey {
   name: string;
@@ -21,7 +22,7 @@ export default function SettingsPage() {
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    fetch('http://localhost:3001/health')
+    fetch(API_ENDPOINTS.health)
       .then((res) => res.json())
       .then((data) => setBackendHealth(data))
       .catch((err) => console.error('Backend not reachable:', err));
@@ -32,7 +33,7 @@ export default function SettingsPage() {
 
   const fetchApiKeys = async () => {
     try {
-      const response = await fetch('http://localhost:3001/ai-keys');
+      const response = await fetch(API_ENDPOINTS.aiKeys);
       const data = await response.json();
       if (data.status === 'ok') {
         setApiKeys(data.keys);
@@ -44,7 +45,7 @@ export default function SettingsPage() {
 
   const handleUpdateKey = async (keyName: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/ai-keys/${keyName}`, {
+      const response = await fetch(buildApiUrl(`/ai-keys/${keyName}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value: keyValues[keyName] || '' }),

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Send, Bot, User, Paperclip, Smile, Phone } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
+import { API_ENDPOINTS } from '@/lib/config';
 
 interface Message {
   id: string;
@@ -66,7 +67,7 @@ export default function CitizenChatPage() {
       // Send to AI
       setTimeout(async () => {
         try {
-          const response = await fetch('http://localhost:3001/ai/chat', {
+          const response = await fetch(API_ENDPOINTS.aiChat, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: inputMessage }),
