@@ -6,8 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Phone, PhoneCall, Delete, PhoneOff, Volume2, Mic, MicOff, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSession } from 'next-auth/react';
+import { buildApiUrl } from '@/lib/config';
 
 export default function CallDialerPage() {
+  const { data: session } = useSession();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -35,11 +38,35 @@ export default function CallDialerPage() {
     setPhoneNumber(phoneNumber.slice(0, -1));
   };
 
-  const handleCall = () => {
+  const handleCall = async () => {
     if (!phoneNumber) return;
     
     setCallStatus('dialing');
     setIsCallActive(true);
+
+    // Send call notification to admin
+    try {
+      const user = session?.user as any;
+      await fetch(buildApiUrl('/notifications'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'call',
+          title: '📞 Incoming Call',
+          message: `Citizen is calling ${phoneNumber}`,
+          payload: {
+            citizenId: user?.id || 'guest',
+            citizenName: user?.name || 'Guest User',
+            citizenEmail: user?.email || 'guest@example.com',
+            phone: phoneNumber,
+            timestamp: new Date().toISOString(),
+          },
+        }),
+      });
+      console.log('✅ Call notification sent to admin');
+    } catch (error) {
+      console.error('❌ Failed to send call notification:', error);
+    }
 
     // Simulate call connection
     setTimeout(() => {

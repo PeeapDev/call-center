@@ -7,6 +7,7 @@ import { Home, Phone, Users, FileAudio, Settings, LogOut, BarChart3, Edit, GitBr
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getNavigationItems, UserRole } from '@/lib/rbac';
+import NotificationBell from '@/components/NotificationBell';
 
 function UserProfile() {
   const { data: session } = useSession();
@@ -120,9 +121,31 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-8">{children}</div>
-      </main>
+      <div className="flex-1 flex flex-col">
+        {/* Top Header Bar with Notifications */}
+        {(userRole === 'admin' || userRole === 'agent' || userRole === 'supervisor') && (
+          <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {pathname === '/dashboard' && 'Dashboard'}
+                {pathname === '/dashboard/chat' && 'Live Chat'}
+                {pathname === '/dashboard/calls' && 'Active Calls'}
+                {pathname === '/dashboard/hr' && 'HR Management'}
+                {pathname === '/dashboard/analytics' && 'Analytics'}
+                {pathname === '/dashboard/settings' && 'Settings'}
+                {!pathname.match(/\/(dashboard|chat|calls|hr|analytics|settings)$/) && 'Call Center'}
+              </h2>
+            </div>
+            <div className="flex items-center gap-4">
+              <NotificationBell />
+            </div>
+          </div>
+        )}
+        
+        <main className="flex-1 overflow-auto">
+          <div className="p-8">{children}</div>
+        </main>
+      </div>
     </div>
   );
 }

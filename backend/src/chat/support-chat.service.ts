@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import Database from 'better-sqlite3';
 import * as path from 'path';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface Conversation {
   id: string;
@@ -31,7 +32,10 @@ export interface Message {
 export class SupportChatService {
   private db: Database.Database;
 
-  constructor() {
+  constructor(
+    @Inject(forwardRef(() => NotificationsService))
+    private notificationsService: NotificationsService,
+  ) {
     const dbPath = path.join(__dirname, '../../callcenter.db');
     this.db = new Database(dbPath);
     this.initializeDatabase();
@@ -100,6 +104,25 @@ export class SupportChatService {
         senderType: 'citizen',
         content: dto.initialMessage,
       });
+    }
+
+    // Send notification to admin
+    try {
+      await this.notificationsService.createNotification({
+        type: 'chat',
+        title: '💬 New Chat Message',
+        message: `${dto.citizenName} started a new conversation`,
+        payload: {
+          conversationId: id,
+          citizenId: dto.citizenId,
+          citizenName: dto.citizenName,
+          citizenEmail: dto.citizenEmail,
+          message: dto.initialMessage,
+          timestamp: now,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to send chat notification:', error);
     }
 
     return this.getConversationById(id);

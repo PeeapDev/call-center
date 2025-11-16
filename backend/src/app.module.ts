@@ -12,6 +12,7 @@ import { CaseModule } from './cases/case.module';
 import { CallsModule } from './calls/calls.module';
 import { AiModule } from './ai/ai.module';
 import { HrModule } from './hr/hr.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { HrModule } from './hr/hr.module';
     CallsModule,
     AiModule,
     HrModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
