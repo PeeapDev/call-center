@@ -51,8 +51,14 @@ export default function StaffChatPage() {
 
   const fetchConversations = async () => {
     try {
-      const response = await fetch(buildApiUrl('/support-chat/conversations'));
+      const url = buildApiUrl('/support-chat/conversations');
+      console.log('[Admin Chat] Fetching conversations from:', url);
+      
+      const response = await fetch(url);
+      console.log('[Admin Chat] Response status:', response.status);
+      
       const data = await response.json();
+      console.log('[Admin Chat] Conversations data:', data);
       
       if (data.status === 'ok') {
         const formatted = data.conversations.map((conv: any) => ({
@@ -65,10 +71,13 @@ export default function StaffChatPage() {
           status: conv.status as 'waiting' | 'active' | 'resolved',
           assignedTo: conv.assignedToName,
         }));
+        console.log('[Admin Chat] ✅ Formatted conversations:', formatted);
         setConversations(formatted);
+      } else {
+        console.error('[Admin Chat] ❌ Error status:', data);
       }
     } catch (error) {
-      console.error('Failed to fetch conversations:', error);
+      console.error('[Admin Chat] ❌ Failed to fetch conversations:', error);
     }
   };
 
@@ -129,11 +138,11 @@ export default function StaffChatPage() {
   const claimConversation = async (conversationId: string) => {
     try {
       await fetch(buildApiUrl(`/support-chat/conversations/${conversationId}/claim`), {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          agentId: user?.id || 'agent_temp',
-          agentName: user?.name || 'Agent',
+          staffId: user?.id || 'staff_temp',
+          staffName: user?.name || 'Staff Agent',
         }),
       });
       fetchConversations(); // Refresh conversation list

@@ -100,21 +100,28 @@ export default function CitizenChatPage() {
       // Send to live staff via backend API
       try {
         const user = session?.user as any;
+        console.log('[Live Chat] Sending message:', { conversationId, user });
         
         // Create conversation if first message
         if (!conversationId) {
-          const convResponse = await fetch(buildApiUrl('/support-chat/conversations'), {
+          const url = buildApiUrl('/support-chat/conversations');
+          console.log('[Live Chat] Creating conversation at:', url);
+          
+          const convResponse = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              citizenId: user?.id || 'guest_' + Date.now(),
+              citizenId: user?.id || 'citizen_' + Date.now(),
               citizenName: user?.name || 'Guest User',
               citizenEmail: user?.email || 'guest@example.com',
               initialMessage: inputMessage,
             }),
           });
 
+          console.log('[Live Chat] Response status:', convResponse.status);
           const convData = await convResponse.json();
+          console.log('[Live Chat] Response data:', convData);
+          
           if (convData.status === 'ok') {
             setConversationId(convData.conversation.id);
             setIsConnected(true);
@@ -122,31 +129,38 @@ export default function CitizenChatPage() {
             const systemMessage: Message = {
               id: Date.now().toString(),
               sender: 'ai',
-              content: 'Your message has been sent to our support team. An agent will respond shortly.',
+              content: '✅ Your message has been sent to our chat team. An agent will respond shortly.',
               timestamp: new Date(),
             };
             setMessages((prev) => [...prev, systemMessage]);
+            console.log('[Live Chat] ✅ Conversation created:', convData.conversation.id);
+          } else {
+            throw new Error(convData.message || 'Failed to create conversation');
           }
         } else {
           // Send message to existing conversation
-          await fetch(buildApiUrl('/support-chat/messages'), {
+          const url = buildApiUrl('/support-chat/messages');
+          console.log('[Live Chat] Sending to:', url);
+          
+          await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               conversationId: conversationId,
-              senderId: session?.user?.id || 'guest',
+              senderId: user?.id || 'citizen_temp',
               senderType: 'citizen',
               content: inputMessage,
             }),
           });
+          console.log('[Live Chat] ✅ Message sent');
         }
         setIsTyping(false);
       } catch (error) {
-        console.error('Failed to send message:', error);
+        console.error('[Live Chat] ❌ Error:', error);
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          content: 'Sorry, failed to send message. Please try again.',
+          content: `❌ Error: ${error.message}. Check console for details.`,
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, errorMessage]);
@@ -162,7 +176,7 @@ export default function CitizenChatPage() {
       const systemMessage: Message = {
         id: Date.now().toString(),
         sender: 'ai',
-        content: 'Connecting you to a live support agent. Please wait...',
+        content: 'Connecting you to a live chat agent. Please wait...',
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, systemMessage]);
@@ -186,9 +200,9 @@ export default function CitizenChatPage() {
         <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Chat Support</h1>
+              <h1 className="text-2xl font-bold">Live Chat</h1>
               <p className="text-sm text-blue-100 mt-1">
-                {chatMode === 'ai' ? 'AI Assistant' : 'Live Support'}
+                {chatMode === 'ai' ? 'AI Assistant' : 'Live Chat with Staff'}
               </p>
             </div>
             
@@ -210,7 +224,7 @@ export default function CitizenChatPage() {
                 size="sm"
               >
                 <User className="w-4 h-4 mr-2" />
-                Live Support
+                Live Chat
               </Button>
             </div>
           </div>
