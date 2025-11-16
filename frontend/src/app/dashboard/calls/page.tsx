@@ -5,54 +5,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Phone, PhoneOff, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { buildApiUrl } from '@/lib/config';
 
-const mockCalls = [
-  {
-    id: '1',
-    caller: '+232 76 123 456',
-    agent: 'Sarah Johnson',
-    duration: 142,
-    status: 'active',
-    queue: 'Technical Support',
-    startTime: '12:45 PM',
-  },
-  {
-    id: '2',
-    caller: '+232 77 987 654',
-    agent: 'Michael Chen',
-    duration: 87,
-    status: 'active',
-    queue: 'General Inquiry',
-    startTime: '12:48 PM',
-  },
-  {
-    id: '3',
-    caller: '+232 78 555 123',
-    agent: null,
-    duration: 34,
-    status: 'waiting',
-    queue: 'Student Services',
-    startTime: '12:50 PM',
-  },
-  {
-    id: '4',
-    caller: '+232 79 321 789',
-    agent: 'Emily Rodriguez',
-    duration: 201,
-    status: 'active',
-    queue: 'Financial Aid',
-    startTime: '12:42 PM',
-  },
-  {
-    id: '5',
-    caller: '+232 76 888 444',
-    agent: null,
-    duration: 12,
-    status: 'waiting',
-    queue: 'General Inquiry',
-    startTime: '12:51 PM',
-  },
-];
+interface Call {
+  id: string;
+  caller: string;
+  agent: string | null;
+  duration: number;
+  status: 'active' | 'waiting';
+  queue: string;
+  startTime: string;
+}
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -62,6 +25,8 @@ function formatDuration(seconds: number): string {
 
 export default function CallsPage() {
   const [time, setTime] = useState(0);
+  const [calls, setCalls] = useState<Call[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -70,8 +35,31 @@ export default function CallsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const activeCalls = mockCalls.filter((c) => c.status === 'active');
-  const waitingCalls = mockCalls.filter((c) => c.status === 'waiting');
+  useEffect(() => {
+    fetchActiveCalls();
+    // Poll every 3 seconds for real-time updates
+    const pollInterval = setInterval(fetchActiveCalls, 3000);
+    return () => clearInterval(pollInterval);
+  }, []);
+
+  const fetchActiveCalls = async () => {
+    try {
+      const response = await fetch(buildApiUrl('/calls/active'));
+      const data = await response.json();
+      
+      if (data.status === 'ok') {
+        setCalls(data.calls || []);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to fetch active calls:', error);
+      setCalls([]); // Clear calls on error
+      setLoading(false);
+    }
+  };
+
+  const activeCalls = calls.filter((c) => c.status === 'active');
+  const waitingCalls = calls.filter((c) => c.status === 'waiting');
 
   return (
     <div className="space-y-8">
@@ -116,9 +104,9 @@ export default function CallsPage() {
             <PhoneOff className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">127</div>
+            <div className="text-2xl font-bold">{calls.length}</div>
             <p className="text-xs text-muted-foreground">
-              {mockCalls.length} active + 122 completed
+              Real-time call tracking
             </p>
           </CardContent>
         </Card>
@@ -130,8 +118,19 @@ export default function CallsPage() {
           <CardTitle>Active Calls ({activeCalls.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {activeCalls.map((call) => (
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">
+              Loading calls...
+            </div>
+          ) : activeCalls.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Phone className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>No active calls at the moment</p>
+              <p className="text-sm mt-2">Calls will appear here when citizens contact the center</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {activeCalls.map((call) => (
               <div
                 key={call.id}
                 className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200"
@@ -161,7 +160,8 @@ export default function CallsPage() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

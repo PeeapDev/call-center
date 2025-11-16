@@ -175,6 +175,18 @@ export class CallsService {
     });
   }
 
+  async getActiveCalls(): Promise<Call[]> {
+    // Get all active calls (both connected and waiting)
+    return this.callRepository.find({
+      where: [
+        { status: CallStatus.CONNECTED },
+        { status: CallStatus.IN_QUEUE },
+        { status: CallStatus.INITIATED },
+      ],
+      order: { createdAt: 'ASC' },
+    });
+  }
+
   async getWaitingCalls(): Promise<Call[]> {
     // Get calls that are waiting for an agent (connected or in_queue status)
     return this.callRepository.find({

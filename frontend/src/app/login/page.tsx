@@ -45,6 +45,7 @@ export default function LoginPage() {
     { role: 'Agent', email: 'agent@education.gov', password: 'agent123' },
     { role: 'Analyst', email: 'analyst@education.gov', password: 'analyst123' },
     { role: 'Auditor', email: 'auditor@education.gov', password: 'auditor123' },
+    { role: 'Citizen', email: 'citizen@example.com', password: 'citizen123' },
   ];
 
   const quickLogin = (email: string, password: string) => {
@@ -175,7 +176,22 @@ export default function LoginPage() {
                 <li>
                   <strong>Auditor:</strong> Read-only access to recordings
                 </li>
+                <li>
+                  <strong>Citizen:</strong> View own calls and cases
+                </li>
               </ul>
+            </div>
+
+            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm font-medium text-green-900 mb-2">
+                👤 Citizen / User Login:
+              </p>
+              <p className="text-xs text-green-800">
+                This portal is primarily for staff today. Citizens normally contact the Ministry
+                using the <span className="font-semibold">117</span> hotline or the mobile app.
+                As we roll out the new authentication system, citizens will be able to log in
+                with their phone number and password to see their own calls and cases.
+              </p>
             </div>
           </CardContent>
         </Card>

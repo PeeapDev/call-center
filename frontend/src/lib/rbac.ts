@@ -1,6 +1,6 @@
 // Role-Based Access Control Helper
 
-export type UserRole = 'admin' | 'supervisor' | 'agent' | 'analyst' | 'auditor';
+export type UserRole = 'admin' | 'supervisor' | 'agent' | 'analyst' | 'auditor' | 'citizen';
 
 export interface RolePermissions {
   canViewDashboard: boolean;
@@ -21,6 +21,13 @@ export interface RolePermissions {
   canViewWebRTC: boolean;
   canViewHR: boolean;
   canManageHR: boolean;
+  canViewAIConfig: boolean;
+  canViewChat: boolean;
+  canViewCitizenChat: boolean;
+  canViewProfile: boolean;
+  canViewNotice: boolean;
+  canViewBlog: boolean;
+  canViewCallDialer: boolean;
 }
 
 export const rolePermissions: Record<UserRole, RolePermissions> = {
@@ -43,6 +50,13 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewWebRTC: true,
     canViewHR: true,
     canManageHR: true,
+    canViewAIConfig: true,
+    canViewChat: true,
+    canViewCitizenChat: false,
+    canViewProfile: false,
+    canViewNotice: false,
+    canViewBlog: false,
+    canViewCallDialer: false,
   },
   supervisor: {
     canViewDashboard: true,
@@ -63,6 +77,13 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewWebRTC: true,
     canViewHR: true,
     canManageHR: false,
+    canViewAIConfig: true,
+    canViewChat: true,
+    canViewCitizenChat: false,
+    canViewProfile: false,
+    canViewNotice: false,
+    canViewBlog: false,
+    canViewCallDialer: false,
   },
   agent: {
     canViewDashboard: false, // Agents get their own simplified dashboard
@@ -83,6 +104,13 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewWebRTC: true,
     canViewHR: false,
     canManageHR: false,
+    canViewAIConfig: false,
+    canViewChat: true,
+    canViewCitizenChat: false,
+    canViewProfile: false,
+    canViewNotice: false,
+    canViewBlog: false,
+    canViewCallDialer: false,
   },
   analyst: {
     canViewDashboard: true,
@@ -103,6 +131,13 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewWebRTC: false,
     canViewHR: false,
     canManageHR: false,
+    canViewAIConfig: false,
+    canViewChat: false,
+    canViewCitizenChat: false,
+    canViewProfile: false,
+    canViewNotice: false,
+    canViewBlog: false,
+    canViewCallDialer: false,
   },
   auditor: {
     canViewDashboard: true,
@@ -123,6 +158,40 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewWebRTC: false,
     canViewHR: false,
     canManageHR: false,
+    canViewAIConfig: false,
+    canViewChat: false,
+    canViewCitizenChat: false,
+    canViewProfile: false,
+    canViewNotice: false,
+    canViewBlog: false,
+    canViewCallDialer: false,
+  },
+  citizen: {
+    canViewDashboard: false, // Citizens get their own user dashboard
+    canViewMyCalls: true,
+    canViewRouting: false,
+    canEditRouting: false,
+    canViewCallFlowBuilder: false,
+    canViewAllCalls: false,
+    canViewAgents: false,
+    canManageAgents: false,
+    canViewRecordings: false,
+    canDownloadRecordings: false,
+    canViewAnalytics: false,
+    canViewContent: false,
+    canEditContent: false,
+    canViewSettings: false,
+    canEditSettings: false,
+    canViewWebRTC: false,
+    canViewHR: false,
+    canManageHR: false,
+    canViewAIConfig: false,
+    canViewChat: false,
+    canViewCitizenChat: true,
+    canViewProfile: true,
+    canViewNotice: true,
+    canViewBlog: true,
+    canViewCallDialer: true,
   },
 };
 
@@ -143,6 +212,17 @@ export function getNavigationItems(role: UserRole | undefined) {
     items.push(
       { href: '/dashboard/my-calls', label: 'My Calls', icon: 'PhoneCall' },
       { href: '/dashboard/webrtc-setup', label: 'Phone Setup', icon: 'Settings' },
+    );
+  } else if (role === 'citizen' as UserRole) {
+    // Citizens see their own simple navigation
+    items.push(
+      { href: '/dashboard/user', label: 'My Portal', icon: 'Home' },
+      { href: '/dashboard/my-calls', label: 'My Calls', icon: 'PhoneCall' },
+      { href: '/dashboard/citizen-chat', label: 'Chat', icon: 'MessageSquare' },
+      { href: '/dashboard/profile', label: 'Profile', icon: 'User' },
+      { href: '/dashboard/notice', label: 'Notice', icon: 'Bell' },
+      { href: '/dashboard/blog', label: 'Blog', icon: 'FileText' },
+      { href: '/dashboard/call-dialer', label: 'Call Dialer', icon: 'Phone' },
     );
   } else {
     // Admin/Supervisor/Analyst/Auditor navigation
@@ -184,6 +264,14 @@ export function getNavigationItems(role: UserRole | undefined) {
 
     if (permissions.canViewContent) {
       items.push({ href: '/dashboard/content', label: 'Content Management', icon: 'Edit' });
+    }
+
+    if (permissions.canViewAIConfig) {
+      items.push({ href: '/dashboard/ai-config', label: 'AI Config', icon: 'Brain' });
+    }
+
+    if (permissions.canViewChat) {
+      items.push({ href: '/dashboard/chat', label: 'Chat Support', icon: 'MessageSquare' });
     }
 
     if (permissions.canViewSettings) {

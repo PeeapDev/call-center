@@ -33,6 +33,12 @@ export class CallsController {
     return this.callsService.getAllCalls(limit);
   }
 
+  @Get('active')
+  async getActiveCalls(): Promise<{ status: string; calls: Call[] }> {
+    const calls = await this.callsService.getActiveCalls();
+    return { status: 'ok', calls };
+  }
+
   @Get('active/waiting')
   async getWaitingCalls(): Promise<Call[]> {
     return this.callsService.getWaitingCalls();

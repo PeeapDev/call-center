@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Body, Param, Put } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
 import { FlowBuilderService } from './flow-builder.service';
-import { FlowTemplate } from './flow-templates';
+import type { FlowTemplate } from './flow-templates';
 
 @Controller('flow-builder')
 export class FlowBuilderController {

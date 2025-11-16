@@ -10,6 +10,9 @@ import { RoutingModule } from './routing/routing.module';
 import { StaffModule } from './staff/staff.module';
 import { CaseModule } from './cases/case.module';
 import { CallsModule } from './calls/calls.module';
+import { AiModule } from './ai/ai.module';
+import { HrModule } from './hr/hr.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -30,6 +33,9 @@ import { CallsModule } from './calls/calls.module';
     StaffModule,
     CaseModule,
     CallsModule,
+    AiModule,
+    HrModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

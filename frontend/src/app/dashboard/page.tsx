@@ -22,6 +22,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { API_ENDPOINTS } from '@/lib/config';
 
 // Mock data for demonstration
 const mockActiveCalls = [
@@ -103,17 +104,19 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  // Redirect agents to their simplified dashboard
+  // Redirect agents and citizens to their dashboards
   useEffect(() => {
     const user = session?.user as any;
     if (user?.role === 'agent') {
       router.push('/dashboard/agent');
+    } else if (user?.role === 'citizen') {
+      router.push('/dashboard/user');
     }
   }, [session, router]);
 
   // Fetch backend health status
   useEffect(() => {
-    fetch('http://localhost:3001/health')
+    fetch(API_ENDPOINTS.health)
       .then((res) => res.json())
       .then((data) => setBackendHealth(data))
       .catch((err) => console.error('Backend not reachable:', err));
