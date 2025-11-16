@@ -37,6 +37,11 @@ class UpdateAgentStatusDto {
   currentCallId?: string;
 }
 
+class LoginDto {
+  phoneNumber: string;
+  password: string;
+}
+
 @Controller('hr')
 export class HrController {
   constructor(private readonly hrService: HrService) {}
@@ -64,6 +69,35 @@ export class HrController {
       return {
         status: 'error',
         message: error.message,
+      };
+    }
+  }
+
+  // Login - verify phone number and password
+  @Post('users/login')
+  async login(@Body() dto: LoginDto) {
+    try {
+      const user = await this.hrService.verifyCredentials(dto.phoneNumber, dto.password);
+      
+      if (!user) {
+        return {
+          status: 'error',
+          message: 'Invalid phone number or password',
+        };
+      }
+
+      // Remove sensitive data
+      const { sipPassword, password, ...userWithoutPassword } = user as any;
+
+      return {
+        status: 'ok',
+        user: userWithoutPassword,
+        message: 'Login successful',
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Invalid phone number or password',
       };
     }
   }

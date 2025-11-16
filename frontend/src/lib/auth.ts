@@ -1,76 +1,79 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
+import { API_ENDPOINTS } from './config';
 
-// Mock user database - in production, this would come from your backend
-const users = [
-  {
-    id: '1',
-    email: 'admin@education.gov',
-    password: 'admin123', // In production: hashed with bcrypt
-    name: 'Admin User',
-    role: 'admin',
-  },
-  {
-    id: '2',
-    email: 'supervisor@education.gov',
-    password: 'super123',
-    name: 'Sarah Johnson',
-    role: 'supervisor',
-  },
-  {
-    id: '3',
-    email: 'agent@education.gov',
-    password: 'agent123',
-    name: 'Michael Chen',
-    role: 'agent',
-  },
-  {
-    id: '4',
-    email: 'analyst@education.gov',
-    password: 'analyst123',
-    name: 'Emily Rodriguez',
-    role: 'analyst',
-  },
-  {
-    id: '5',
-    email: 'auditor@education.gov',
-    password: 'auditor123',
-    name: 'David Kim',
-    role: 'auditor',
-  },
-  {
-    id: '6',
-    email: 'citizen@example.com',
-    password: 'citizen123',
-    name: 'John Citizen',
-    role: 'citizen',
-  },
-];
+// Account type to role mapping
+const accountTypeToRole = (accountType: string): string => {
+  const mapping: Record<string, string> = {
+    admin: 'admin',
+    supervisor: 'supervisor',
+    agent: 'agent',
+    analyst: 'analyst',
+    auditor: 'auditor',
+    citizen: 'citizen',
+  };
+  return mapping[accountType] || 'citizen';
+};
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        email: { label: 'Email', type: 'email' },
+        phoneNumber: { label: 'Phone Number', type: 'text' },
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const user = users.find(
-          (u) =>
-            u.email === credentials?.email &&
-            u.password === credentials?.password
-        );
+        try {
+          // Call backend API to authenticate
+          const response = await fetch(`${API_ENDPOINTS.hrUsers}`);
+          const data = await response.json();
 
-        if (!user) {
-          throw new Error('Invalid credentials');
+          if (data.status !== 'ok') {
+            throw new Error('Failed to fetch users');
+          }
+
+          // Find user by phone number
+          const user = data.users.find(
+            (u: any) => u.phoneNumber === credentials?.phoneNumber
+          );
+
+          if (!user) {
+            throw new Error('User not found');
+          }
+
+          // Verify password (backend stores hashed password)
+          // We need to call a backend login endpoint that verifies the password
+          const loginResponse = await fetch(`${API_ENDPOINTS.hrUsers}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phoneNumber: credentials?.phoneNumber,
+              password: credentials?.password,
+            }),
+          });
+
+          const loginData = await loginResponse.json();
+
+          if (loginData.status !== 'ok') {
+            throw new Error('Invalid phone number or password');
+          }
+
+          // Store phone in localStorage for later use
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('userPhone', user.phoneNumber);
+          }
+
+          return {
+            id: user.id,
+            phone: user.phoneNumber,
+            name: user.name,
+            role: accountTypeToRole(user.accountType),
+            accountType: user.accountType,
+          };
+        } catch (error) {
+          console.error('Authentication error:', error);
+          throw new Error('Invalid phone number or password');
         }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
       },
     }),
   ],

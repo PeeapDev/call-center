@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,13 +21,13 @@ export default function LoginPage() {
 
     try {
       const result = await signIn('credentials', {
-        email,
+        phoneNumber,
         password,
         redirect: false,
       });
 
       if (result?.error) {
-        setError('Invalid email or password');
+        setError('Invalid phone number or password');
       } else {
         router.push('/dashboard');
         router.refresh();
@@ -39,18 +39,9 @@ export default function LoginPage() {
     }
   };
 
-  const demoAccounts = [
-    { role: 'Admin', email: 'admin@education.gov', password: 'admin123' },
-    { role: 'Supervisor', email: 'supervisor@education.gov', password: 'super123' },
-    { role: 'Agent', email: 'agent@education.gov', password: 'agent123' },
-    { role: 'Analyst', email: 'analyst@education.gov', password: 'analyst123' },
-    { role: 'Auditor', email: 'auditor@education.gov', password: 'auditor123' },
-    { role: 'Citizen', email: 'citizen@example.com', password: 'citizen123' },
-  ];
-
-  const quickLogin = (email: string, password: string) => {
-    setEmail(email);
-    setPassword(password);
+  const quickLogin = (phone: string, pwd: string) => {
+    setPhoneNumber(phone);
+    setPassword(pwd);
   };
 
   return (
@@ -81,14 +72,14 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
+                  Phone Number
                 </label>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="your.email@education.gov"
+                  placeholder="+232 76 123 456"
                   required
                 />
               </div>
@@ -120,6 +111,15 @@ export default function LoginPage() {
               >
                 {loading ? 'Signing in...' : 'Sign In'}
               </Button>
+
+              <div className="text-center">
+                <p className="text-sm text-gray-600">
+                  Don't have an account?{' '}
+                  <a href="/register" className="text-blue-600 hover:text-blue-700 font-semibold">
+                    Register as Citizen
+                  </a>
+                </p>
+              </div>
             </form>
 
             <div className="mt-6 text-center text-sm text-gray-500">
@@ -128,53 +128,41 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        {/* Demo Accounts */}
+        {/* Login Information */}
         <Card className="shadow-xl bg-gradient-to-br from-blue-50 to-purple-50">
           <CardHeader>
-            <CardTitle>Demo Accounts</CardTitle>
+            <CardTitle>How to Login</CardTitle>
             <p className="text-sm text-gray-600">
-              Click any account below to quick-fill the login form
+              Use your registered phone number and password
             </p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {demoAccounts.map((account) => (
-              <button
-                key={account.email}
-                onClick={() => quickLogin(account.email, account.password)}
-                className="w-full p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-500 hover:shadow-md transition-all text-left"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-gray-900">{account.role}</p>
-                    <p className="text-sm text-gray-600 mt-1">{account.email}</p>
-                  </div>
-                  <Badge variant="outline">{account.role}</Badge>
-                </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  Password: {account.password}
-                </div>
-              </button>
-            ))}
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-white border border-gray-200 rounded-lg">
+              <p className="font-semibold text-gray-900 mb-2">📱 For Staff Members:</p>
+              <p className="text-sm text-gray-700">
+                Your account has been created by HR. Use the phone number provided during registration and the password you set up.
+              </p>
+            </div>
 
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm font-medium text-blue-900 mb-2">
-                🔐 Role Permissions:
+                🔐 Role-Based Access:
               </p>
               <ul className="text-xs text-blue-800 space-y-1">
                 <li>
-                  <strong>Admin:</strong> Full system access
+                  <strong>Admin:</strong> Full system access + settings
                 </li>
                 <li>
-                  <strong>Supervisor:</strong> Monitor agents, view reports
+                  <strong>Supervisor:</strong> Monitor agents & view reports
                 </li>
                 <li>
-                  <strong>Agent:</strong> Handle calls, view own stats
+                  <strong>Agent:</strong> Handle calls & view own stats
                 </li>
                 <li>
                   <strong>Analyst:</strong> View analytics and reports
                 </li>
                 <li>
-                  <strong>Auditor:</strong> Read-only access to recordings
+                  <strong>Auditor:</strong> Access recordings (read-only)
                 </li>
                 <li>
                   <strong>Citizen:</strong> View own calls and cases
@@ -182,15 +170,30 @@ export default function LoginPage() {
               </ul>
             </div>
 
-            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
               <p className="text-sm font-medium text-green-900 mb-2">
-                👤 Citizen / User Login:
+                👤 New Citizens:
               </p>
-              <p className="text-xs text-green-800">
-                This portal is primarily for staff today. Citizens normally contact the Ministry
-                using the <span className="font-semibold">117</span> hotline or the mobile app.
-                As we roll out the new authentication system, citizens will be able to log in
-                with their phone number and password to see their own calls and cases.
+              <p className="text-sm text-green-800 mb-2">
+                Don't have an account yet? Register now to:
+              </p>
+              <ul className="text-xs text-green-800 space-y-1 ml-4 list-disc">
+                <li>Track your complaints and cases</li>
+                <li>Call the Ministry hotline (117)</li>
+                <li>View call history and status</li>
+                <li>Receive notifications</li>
+              </ul>
+              <a 
+                href="/register" 
+                className="mt-3 inline-block text-sm font-semibold text-green-700 hover:text-green-900"
+              >
+                → Click here to register
+              </a>
+            </div>
+
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-xs text-yellow-800">
+                <strong>🔒 Security Notice:</strong> Never share your password. Ministry staff will never ask for your password via phone or email.
               </p>
             </div>
           </CardContent>

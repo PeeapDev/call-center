@@ -98,6 +98,23 @@ export class HrService {
     }
   }
 
+  async verifyCredentials(phoneNumber: string, password: string): Promise<User | null> {
+    const user = await this.userRepository.findOne({ where: { phoneNumber } });
+    
+    if (!user) {
+      return null;
+    }
+
+    // Compare password with hashed password
+    const isValid = await bcrypt.compare(password, user.password);
+    
+    if (!isValid) {
+      return null;
+    }
+
+    return user;
+  }
+
   async updateUser(id: string, userData: any): Promise<User> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
