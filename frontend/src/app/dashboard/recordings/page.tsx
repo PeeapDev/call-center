@@ -4,85 +4,96 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FileAudio, Download, Play, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/lib/config';
 
-const mockRecordings = [
-  {
-    id: '1',
-    caller: '+232 76 123 456',
-    agent: 'Sarah Johnson',
-    date: '2025-11-14',
-    time: '10:23 AM',
-    duration: '4:32',
-    size: '2.1 MB',
-    queue: 'Technical Support',
-    status: 'completed',
-  },
-  {
-    id: '2',
-    caller: '+232 77 987 654',
-    agent: 'Michael Chen',
-    date: '2025-11-14',
-    time: '10:18 AM',
-    duration: '6:45',
-    size: '3.2 MB',
-    queue: 'General Inquiry',
-    status: 'completed',
-  },
-  {
-    id: '3',
-    caller: '+232 78 555 123',
-    agent: 'Emily Rodriguez',
-    date: '2025-11-14',
-    time: '10:05 AM',
-    duration: '3:12',
-    size: '1.5 MB',
-    queue: 'Student Services',
-    status: 'completed',
-  },
-  {
-    id: '4',
-    caller: '+232 79 321 789',
-    agent: 'David Kim',
-    date: '2025-11-14',
-    time: '09:54 AM',
-    duration: '8:23',
-    size: '4.0 MB',
-    queue: 'Financial Aid',
-    status: 'completed',
-  },
-  {
-    id: '5',
-    caller: '+232 76 888 444',
-    agent: 'Lisa Thompson',
-    date: '2025-11-14',
-    time: '09:42 AM',
-    duration: '2:56',
-    size: '1.4 MB',
-    queue: 'General Inquiry',
-    status: 'completed',
-  },
-  {
-    id: '6',
-    caller: '+232 77 111 222',
-    agent: 'James Wilson',
-    date: '2025-11-14',
-    time: '09:30 AM',
-    duration: '5:18',
-    size: '2.5 MB',
-    queue: 'Technical Support',
-    status: 'transcribed',
-  },
-];
+interface Recording {
+  id: string;
+  callId: string;
+  caller: string;
+  agent?: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  recordingUrl?: string;
+  fileSize?: number;
+  queue?: string;
+  status: string;
+}
 
 export default function RecordingsPage() {
+  const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [stats, setStats] = useState({
+    total: 0,
+    totalDuration: 0,
+    totalSize: 0,
+    transcribed: 0,
+  });
 
-  const filteredRecordings = mockRecordings.filter(
+  useEffect(() => {
+    fetchRecordings();
+  }, []);
+
+  const fetchRecordings = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_ENDPOINTS.calls}/recordings`);
+      const data = await response.json();
+
+      if (data.status === 'ok' && data.recordings) {
+        setRecordings(data.recordings);
+        calculateStats(data.recordings);
+      }
+    } catch (error) {
+      console.error('Failed to fetch recordings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateStats = (recs: Recording[]) => {
+    const total = recs.length;
+    const totalDuration = recs.reduce((sum, r) => sum + (r.duration || 0), 0);
+    const totalSize = recs.reduce((sum, r) => sum + (r.fileSize || 0), 0);
+    const transcribed = recs.filter((r) => r.status === 'transcribed').length;
+
+    setStats({ total, totalDuration, totalSize, transcribed });
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (!bytes) return '0 MB';
+    const mb = (bytes / (1024 * 1024)).toFixed(1);
+    return `${mb} MB`;
+  };
+
+  const formatDateTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return {
+      date: date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }),
+      time: date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    };
+  };
+
+  const filteredRecordings = recordings.filter(
     (rec) =>
       rec.caller.includes(searchQuery) ||
-      rec.agent.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      rec.queue.toLowerCase().includes(searchQuery.toLowerCase())
+      (rec.agent && rec.agent.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (rec.queue && rec.queue.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -104,8 +115,8 @@ export default function RecordingsPage() {
             <FileAudio className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockRecordings.length}</div>
-            <p className="text-xs text-muted-foreground">Today</p>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">Total calls</p>
           </CardContent>
         </Card>
 
@@ -115,8 +126,8 @@ export default function RecordingsPage() {
             <FileAudio className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">31:06</div>
-            <p className="text-xs text-muted-foreground">Hours of audio</p>
+            <div className="text-2xl font-bold">{formatDuration(stats.totalDuration)}</div>
+            <p className="text-xs text-muted-foreground">Total duration</p>
           </CardContent>
         </Card>
 
@@ -126,8 +137,8 @@ export default function RecordingsPage() {
             <FileAudio className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">14.7 MB</div>
-            <p className="text-xs text-muted-foreground">Of 10 GB available</p>
+            <div className="text-2xl font-bold">{formatFileSize(stats.totalSize)}</div>
+            <p className="text-xs text-muted-foreground">Storage used</p>
           </CardContent>
         </Card>
 
@@ -138,7 +149,7 @@ export default function RecordingsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {mockRecordings.filter((r) => r.status === 'transcribed').length}
+              {stats.transcribed}
             </div>
             <p className="text-xs text-muted-foreground">AI processed</p>
           </CardContent>
@@ -188,16 +199,16 @@ export default function RecordingsPage() {
                       )}
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
-                      Agent: {recording.agent} • {recording.date} at {recording.time}
+                      Agent: {recording.agent || 'N/A'} • {formatDateTime(recording.startTime).date} at {formatDateTime(recording.startTime).time}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="text-right">
                     <p className="font-semibold text-gray-900">
-                      {recording.duration}
+                      {formatDuration(recording.duration)}
                     </p>
-                    <p className="text-xs text-gray-500">{recording.size}</p>
+                    <p className="text-xs text-gray-500">{formatFileSize(recording.fileSize || 0)}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm">
@@ -215,9 +226,15 @@ export default function RecordingsPage() {
         </CardContent>
       </Card>
 
-      {filteredRecordings.length === 0 && (
+      {!loading && filteredRecordings.length === 0 && (
         <div className="text-center py-12 text-gray-500">
-          No recordings found matching your search.
+          {searchQuery ? 'No recordings found matching your search.' : 'No recordings available yet. Recordings will appear here after calls are completed.'}
+        </div>
+      )}
+
+      {loading && (
+        <div className="text-center py-12 text-gray-500">
+          Loading recordings...
         </div>
       )}
     </div>
