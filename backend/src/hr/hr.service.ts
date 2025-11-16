@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 
-interface User {
+export interface User {
   id: string;
   phoneNumber: string;
   name: string;

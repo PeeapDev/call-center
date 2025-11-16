@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import Database from 'better-sqlite3';
 import * as path from 'path';
 
-interface Conversation {
+export interface Conversation {
   id: string;
   citizenId: string;
   citizenName: string;
@@ -15,7 +15,7 @@ interface Conversation {
   lastMessage: string;
 }
 
-interface Message {
+export interface Message {
   id: string;
   conversationId: string;
   senderId: string;
