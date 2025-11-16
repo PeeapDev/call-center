@@ -348,9 +348,13 @@ export class FlowBuilderService {
   async getAvailableAgentsForFlow(): Promise<any[]> {
     try {
       const agents = await this.hrService.getUsers({ accountType: 'agent' });
+      console.log('Flow Builder - Found agents:', agents.length);
+      console.log('Flow Builder - Agents:', agents.map(a => ({ id: a.id, name: a.name, accountType: a.accountType })));
+      
       const agentIds = agents.map(a => a.id).filter(id => id && typeof id === 'string');
       const agentsWithStatus = await this.hrService.getAgentsWithStatus(agentIds);
-
+      
+      console.log('Flow Builder - Agents with status:', agentsWithStatus.length);
       return agentsWithStatus;
     } catch (error) {
       console.error('Error in getAvailableAgentsForFlow:', error);

@@ -282,6 +282,11 @@ export function getNavigationItems(role: UserRole | undefined) {
     if (permissions.canViewWebRTC) {
       items.push({ href: '/dashboard/webrtc-setup', label: 'WebRTC Setup', icon: 'Globe' });
     }
+
+    // Announcements for admin only
+    if (role === 'admin') {
+      items.push({ href: '/dashboard/announcements', label: 'Announcements', icon: 'Bell' });
+    }
   }
 
   return items;

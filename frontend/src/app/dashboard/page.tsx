@@ -24,47 +24,14 @@ import {
 } from 'recharts';
 import { API_ENDPOINTS } from '@/lib/config';
 
-// Mock data for demonstration
-const mockActiveCalls = [
-  {
-    id: '1',
-    caller: '+232 76 123 456',
-    agent: 'Sarah Johnson',
-    duration: 142,
-    status: 'active',
-    queue: 'Technical Support',
-  },
-  {
-    id: '2',
-    caller: '+232 77 987 654',
-    agent: 'Michael Chen',
-    duration: 87,
-    status: 'active',
-    queue: 'General Inquiry',
-  },
-  {
-    id: '3',
-    caller: '+232 78 555 123',
-    agent: null,
-    duration: 34,
-    status: 'waiting',
-    queue: 'Student Services',
-  },
-];
-
-const mockAgents = [
-  { id: '1', name: 'Sarah Johnson', status: 'on-call', calls: 8 },
-  { id: '2', name: 'Michael Chen', status: 'on-call', calls: 6 },
-  { id: '3', name: 'Emily Rodriguez', status: 'available', calls: 5 },
-  { id: '4', name: 'David Kim', status: 'break', calls: 7 },
-  { id: '5', name: 'Lisa Thompson', status: 'offline', calls: 0 },
-];
-
-const mockQueueStats = {
-  waiting: 3,
-  avgWaitTime: 45,
-  totalToday: 127,
-  avgCallDuration: 3.2,
+// Real data - will be fetched from API
+const initialActiveCalls: any[] = [];
+const initialAgents: any[] = [];
+const initialQueueStats = {
+  waiting: 0,
+  avgWaitTime: 0,
+  totalToday: 0,
+  avgCallDuration: 0,
 };
 
 // Analytics chart data
@@ -99,36 +66,67 @@ function formatDuration(seconds: number): string {
 }
 
 export default function DashboardPage() {
-  const [backendHealth, setBackendHealth] = useState<any>(null);
-  const [time, setTime] = useState(0);
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
+  const [backendHealth, setBackendHealth] = useState<any>(null);
+  const [activeCalls, setActiveCalls] = useState<any[]>(initialActiveCalls);
+  const [agents, setAgents] = useState<any[]>(initialAgents);
+  const [queueStats, setQueueStats] = useState(initialQueueStats);
+  const [time, setTime] = useState(0);
 
-  // Redirect agents and citizens to their dashboards
   useEffect(() => {
-    const user = session?.user as any;
-    if (user?.role === 'agent') {
-      router.push('/dashboard/agent');
-    } else if (user?.role === 'citizen') {
-      router.push('/dashboard/user');
+    if (status === 'unauthenticated') {
+      router.push('/login');
     }
-  }, [session, router]);
+  }, [status, router]);
 
-  // Fetch backend health status
   useEffect(() => {
-    fetch(API_ENDPOINTS.health)
-      .then((res) => res.json())
-      .then((data) => setBackendHealth(data))
-      .catch((err) => console.error('Backend not reachable:', err));
+    checkBackendHealth();
+    fetchDashboardData();
+    const interval = setInterval(() => {
+      checkBackendHealth();
+      fetchDashboardData();
+    }, 30000); // Check every 30s
+    return () => clearInterval(interval);
   }, []);
 
-  // Simulate real-time call duration updates
+  const checkBackendHealth = async () => {
+    try {
+      const response = await fetch(`${API_ENDPOINTS.health}`);
+      const data = await response.json();
+      setBackendHealth(data);
+    } catch (error) {
+      console.error('Failed to check backend health:', error);
+    }
+  };
+
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch real agents
+      const agentsRes = await fetch(`${API_ENDPOINTS.hrUsers}?accountType=agent`);
+      const agentsData = await agentsRes.json();
+      if (agentsData.status === 'ok') {
+        setAgents(agentsData.users || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    }
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTime((t) => t + 1);
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-lg text-gray-500">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -167,9 +165,9 @@ export default function DashboardPage() {
               <Phone className="h-5 w-5 text-white/80" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{mockActiveCalls.filter((c) => c.status === 'active').length}</div>
+              <div className="text-3xl font-bold">{activeCalls.filter((c) => c.status === 'active').length}</div>
               <p className="text-xs text-blue-100">
-                {mockActiveCalls.filter((c) => c.status === 'waiting').length} waiting
+                {activeCalls.filter((c) => c.status === 'waiting').length} waiting
               </p>
             </CardContent>
           </Card>
@@ -188,10 +186,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
-                {mockAgents.filter((a) => a.status !== 'offline').length}/{mockAgents.length}
+                {agents.filter((a) => a.status !== 'offline').length}/{agents.length}
               </div>
               <p className="text-xs text-purple-100">
-                {mockAgents.filter((a) => a.status === 'on-call').length} on active calls
+                {agents.filter((a) => a.status === 'on-call').length} on active calls
               </p>
             </CardContent>
           </Card>
@@ -209,9 +207,9 @@ export default function DashboardPage() {
               <Clock className="h-5 w-5 text-white/80" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{mockQueueStats.avgWaitTime}s</div>
+              <div className="text-3xl font-bold">{queueStats.avgWaitTime}s</div>
               <p className="text-xs text-orange-100">
-                {mockQueueStats.waiting} in queue
+                {queueStats.waiting} in queue
               </p>
             </CardContent>
           </Card>
@@ -229,9 +227,9 @@ export default function DashboardPage() {
               <TrendingUp className="h-5 w-5 text-white/80" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{mockQueueStats.totalToday}</div>
+              <div className="text-3xl font-bold">{queueStats.totalToday}</div>
               <p className="text-xs text-pink-100">
-                Avg {mockQueueStats.avgCallDuration} min/call
+                Avg {queueStats.avgCallDuration} min/call
               </p>
             </CardContent>
           </Card>
@@ -273,7 +271,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="pt-6">
             <div className="space-y-4">
-              {mockActiveCalls.map((call, idx) => (
+              {activeCalls.map((call, idx) => (
                 <motion.div
                   key={call.id}
                   initial={{ opacity: 0, x: -20 }}
@@ -330,7 +328,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {mockAgents.map((agent, idx) => (
+              {agents.map((agent, idx) => (
                 <motion.div
                   key={agent.id}
                   initial={{ opacity: 0, scale: 0.9 }}

@@ -184,7 +184,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
                   <p className="font-medium text-gray-900">Database</p>
-                  <p className="text-sm text-gray-500">SQLite</p>
+                  <p className="text-sm text-gray-500">PostgreSQL</p>
                 </div>
                 <Badge variant="default" className="bg-green-600">Active</Badge>
               </div>
