@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  asterisk:
+    image: andrius/asterisk:latest
+    container_name: callcenter-asterisk
+    network_mode: host
+    volumes:
+      - ./asterisk-config/ari.conf:/etc/asterisk/ari.conf
+      - ./asterisk-config/http.conf:/etc/asterisk/http.conf
+      - ./asterisk-config/manager.conf:/etc/asterisk/manager.conf
+      - ./asterisk-config/pjsip.conf:/etc/asterisk/pjsip.conf
+      - ./asterisk-config/extensions.conf:/etc/asterisk/extensions.conf
+    environment:
+      - TZ=UTC
+    restart: unless-stopped
+    ports:
+      - "8088:8088"   # HTTP/ARI
+      - "5038:5038"   # AMI
+      - "5060:5060/udp"  # SIP
+      - "10000-10100:10000-10100/udp"  # RTP
+    command: asterisk -f -vvv
