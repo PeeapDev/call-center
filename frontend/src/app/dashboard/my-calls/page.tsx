@@ -14,10 +14,11 @@ import {
   PhoneCall,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AgentCallInterface from '@/components/AgentCallInterface';
 import RealTimeCallNotifications from '@/components/RealTimeCallNotifications';
+import { API_ENDPOINTS } from '@/lib/config';
 
 interface CallHistory {
   id: string;
@@ -31,55 +32,41 @@ interface CallHistory {
   notes?: string;
 }
 
-const mockCallHistory: CallHistory[] = [
-  {
-    id: '1',
-    callerNumber: '+232 76 123 456',
-    callerName: 'John Kamara',
-    direction: 'inbound',
-    status: 'completed',
-    duration: 342,
-    timestamp: new Date(Date.now() - 3600000),
-    queue: 'Exam Malpractice',
-    notes: 'Reported cheating at XYZ School. Opened investigation case #1234.',
-  },
-  {
-    id: '2',
-    callerNumber: '+232 77 987 654',
-    callerName: 'Sarah Johnson',
-    direction: 'inbound',
-    status: 'missed',
-    duration: 0,
-    timestamp: new Date(Date.now() - 7200000),
-    queue: 'Teacher Complaints',
-  },
-  {
-    id: '3',
-    callerNumber: '+232 78 555 123',
-    direction: 'outbound',
-    status: 'completed',
-    duration: 180,
-    timestamp: new Date(Date.now() - 10800000),
-    queue: 'Follow-up',
-    notes: 'Callback - Provided update on investigation status.',
-  },
-  {
-    id: '4',
-    callerNumber: '+232 76 444 222',
-    callerName: 'Mohamed Sesay',
-    direction: 'inbound',
-    status: 'abandoned',
-    duration: 45,
-    timestamp: new Date(Date.now() - 14400000),
-    queue: 'General Inquiry',
-  },
-];
-
 export default function MyCallsPage() {
-  const [callHistory] = useState<CallHistory[]>(mockCallHistory);
+  const [callHistory, setCallHistory] = useState<CallHistory[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'active' | 'history'>('active');
   const [showDialer, setShowDialer] = useState(false);
   const [dialNumber, setDialNumber] = useState('');
+
+  useEffect(() => {
+    fetchCallHistory();
+    const interval = setInterval(fetchCallHistory, 5000); // Refresh every 5 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchCallHistory = async () => {
+    try {
+      // Get user phone from localStorage
+      const userPhone = localStorage.getItem('userPhone');
+      if (!userPhone) {
+        setLoading(false);
+        return;
+      }
+
+      // Fetch calls for this user
+      const response = await fetch(`${API_ENDPOINTS.calls}?phone=${userPhone}`);
+      const data = await response.json();
+      
+      if (data.status === 'ok' && data.calls) {
+        setCallHistory(data.calls);
+      }
+    } catch (error) {
+      console.error('Failed to fetch call history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCallback = (call: CallHistory) => {
     setDialNumber(call.callerNumber);

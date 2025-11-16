@@ -35,6 +35,7 @@ export default function HREnhancedPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [showPassword, setShowPassword] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -43,6 +44,7 @@ export default function HREnhancedPage() {
     password: '',
     accountType: 'agent',
     userCategory: '',
+    extension: '',
     skills: [] as string[],
   });
 
@@ -71,18 +73,33 @@ export default function HREnhancedPage() {
   const handleCreateUser = async () => {
     console.log('handleCreateUser called');
     console.log('Form data:', formData);
+    console.log('Editing user ID:', editingUserId);
     
-    if (!formData.name || !formData.phoneNumber || !formData.password) {
+    // For edit, password is optional
+    const isEditing = editingUserId !== null;
+    if (!formData.name || !formData.phoneNumber || (!isEditing && !formData.password)) {
       alert('Please fill in all required fields');
       return;
     }
 
     try {
-      console.log('Sending request to:', API_ENDPOINTS.hrUsers);
-      const response = await fetch(API_ENDPOINTS.hrUsers, {
-        method: 'POST',
+      const url = isEditing 
+        ? `${API_ENDPOINTS.hrUsers}/${editingUserId}`
+        : API_ENDPOINTS.hrUsers;
+      
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      // Don't send password if editing and password field is empty
+      const bodyData = { ...formData };
+      if (isEditing && !formData.password) {
+        delete (bodyData as any).password;
+      }
+      
+      console.log('Sending request to:', url);
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(bodyData),
       });
 
       console.log('Response status:', response.status);
@@ -93,15 +110,18 @@ export default function HREnhancedPage() {
         setShowAddModal(false);
         resetForm();
         
-        // Don't show SIP modal - agent can view credentials on their dashboard anytime
-        alert(`✓ ${data.user.name} created successfully!\n\nAgent can view their WebRTC credentials on their dashboard.`);
+        const message = isEditing 
+          ? `✓ ${data.user.name} updated successfully!`
+          : `✓ ${data.user.name} created successfully!\n\nAgent can view their WebRTC credentials on their dashboard.`;
+        
+        alert(message);
         fetchUsers();
       } else {
         alert(`Error: ${data.message}`);
       }
     } catch (error) {
       console.error('API call failed:', error);
-      alert('Failed to create user');
+      alert(isEditing ? 'Failed to update user' : 'Failed to create user');
     }
   };
 
@@ -155,8 +175,10 @@ export default function HREnhancedPage() {
       password: '',
       accountType: 'agent',
       userCategory: '',
+      extension: '',
       skills: [],
     });
+    setEditingUserId(null);
   };
 
   const copyToClipboard = (text: string) => {
@@ -388,7 +410,23 @@ export default function HREnhancedPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setFormData({
+                                name: user.name,
+                                phoneNumber: user.phoneNumber,
+                                password: '',
+                                accountType: user.accountType as 'admin' | 'supervisor' | 'agent' | 'analyst' | 'auditor' | 'citizen',
+                                userCategory: user.userCategory || '',
+                                extension: user.extension || '',
+                                skills: user.skills || [],
+                              });
+                              setEditingUserId(user.id);
+                              setShowAddModal(true);
+                            }}
+                          >
                             <Edit className="w-4 h-4" />
                           </Button>
                           <Button

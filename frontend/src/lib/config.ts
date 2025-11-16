@@ -52,6 +52,7 @@ export const API_ENDPOINTS = {
   
   // Announcements
   announcements: `${BACKEND_URL}/announcements`,
+  calls: `${BACKEND_URL}/calls`,
 };
 
 // Helper function to build URLs
