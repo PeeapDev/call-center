@@ -251,6 +251,11 @@ export function getNavigationItems(role: UserRole | undefined) {
       items.push({ href: '/dashboard/agents', label: 'Agents', icon: 'Users' });
     }
 
+    // User Management for admin only
+    if (role === 'admin') {
+      items.push({ href: '/dashboard/user-management', label: 'User Management', icon: 'UserCog' });
+    }
+
     if (permissions.canViewHR) {
       items.push({ href: '/dashboard/hr', label: 'Human Resources', icon: 'Briefcase' });
     }
