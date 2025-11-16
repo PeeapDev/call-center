@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Send, User, Clock, MessageSquare, Search, Filter } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
+import { API_ENDPOINTS, buildApiUrl } from '@/lib/config';
 
 interface ChatConversation {
   id: string;
@@ -40,40 +41,36 @@ export default function StaffChatPage() {
 
   const user = session?.user as any;
 
-  // Load mock conversations
+  // Load real conversations from backend
   useEffect(() => {
-    const mockConversations: ChatConversation[] = [
-      {
-        id: '1',
-        citizenName: 'John Doe',
-        citizenEmail: 'john@example.com',
-        lastMessage: 'I need help with enrollment...',
-        timestamp: new Date(Date.now() - 5 * 60000),
-        unread: 2,
-        status: 'waiting',
-      },
-      {
-        id: '2',
-        citizenName: 'Jane Smith',
-        citizenEmail: 'jane@example.com',
-        lastMessage: 'When does the new semester start?',
-        timestamp: new Date(Date.now() - 15 * 60000),
-        unread: 0,
-        status: 'active',
-        assignedTo: user?.name,
-      },
-      {
-        id: '3',
-        citizenName: 'Mike Johnson',
-        citizenEmail: 'mike@example.com',
-        lastMessage: 'Thank you for your help!',
-        timestamp: new Date(Date.now() - 30 * 60000),
-        unread: 0,
-        status: 'resolved',
-      },
-    ];
-    setConversations(mockConversations);
-  }, [user]);
+    fetchConversations();
+    // Poll for new messages every 5 seconds
+    const interval = setInterval(fetchConversations, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchConversations = async () => {
+    try {
+      const response = await fetch(buildApiUrl('/support-chat/conversations'));
+      const data = await response.json();
+      
+      if (data.status === 'ok') {
+        const formatted = data.conversations.map((conv: any) => ({
+          id: conv.id,
+          citizenName: conv.citizenName,
+          citizenEmail: conv.citizenEmail,
+          lastMessage: conv.lastMessage || 'No messages yet',
+          timestamp: new Date(conv.updatedAt),
+          unread: conv.status === 'waiting' ? 1 : 0,
+          status: conv.status as 'waiting' | 'active' | 'resolved',
+          assignedTo: conv.assignedToName,
+        }));
+        setConversations(formatted);
+      }
+    } catch (error) {
+      console.error('Failed to fetch conversations:', error);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -97,23 +94,52 @@ export default function StaffChatPage() {
       );
     }
 
-    // Load conversation messages (mock for now)
-    const mockMessages: Message[] = [
-      {
-        id: '1',
-        sender: 'citizen',
-        content: 'Hello, I need help with the enrollment process.',
-        timestamp: new Date(Date.now() - 10 * 60000),
-      },
-      {
-        id: '2',
-        sender: 'citizen',
-        content: 'Specifically, I\'m not sure what documents I need to submit.',
-        timestamp: new Date(Date.now() - 9 * 60000),
-      },
-    ];
+    // Load conversation messages from backend
+    fetchMessages(conversation.id);
 
-    setMessages(mockMessages);
+    // Claim conversation if waiting
+    if (conversation.status === 'waiting') {
+      claimConversation(conversation.id);
+    }
+  };
+
+  const fetchMessages = async (conversationId: string) => {
+    try {
+      const response = await fetch(buildApiUrl(`/support-chat/conversations/${conversationId}/messages`));
+      const data = await response.json();
+      
+      if (data.status === 'ok') {
+        const formatted = data.messages.map((msg: any) => ({
+          id: msg.id,
+          sender: msg.senderType as 'citizen' | 'staff',
+          content: msg.content,
+          timestamp: new Date(msg.createdAt),
+          staffName: msg.staffName,
+          staffRole: msg.staffRole,
+          staffNumber: msg.staffNumber,
+        }));
+        setMessages(formatted);
+      }
+    } catch (error) {
+      console.error('Failed to fetch messages:', error);
+      setMessages([]);
+    }
+  };
+
+  const claimConversation = async (conversationId: string) => {
+    try {
+      await fetch(buildApiUrl(`/support-chat/conversations/${conversationId}/claim`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: user?.id || 'agent_temp',
+          agentName: user?.name || 'Agent',
+        }),
+      });
+      fetchConversations(); // Refresh conversation list
+    } catch (error) {
+      console.error('Failed to claim conversation:', error);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -130,16 +156,36 @@ export default function StaffChatPage() {
     };
 
     setMessages((prev) => [...prev, staffMessage]);
-    setInputMessage('');
-
-    // Update last message in conversation list
-    setConversations((prev) =>
-      prev.map((conv) =>
-        conv.id === selectedConversation.id
-          ? { ...conv, lastMessage: inputMessage, timestamp: new Date() }
-          : conv
-      )
-    );
+    
+    // Send message to backend
+    try {
+      await fetch(buildApiUrl('/support-chat/messages'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: selectedConversation.id,
+          senderId: user?.id || 'staff_temp',
+          senderType: 'staff',
+          content: inputMessage,
+          staffName: user?.name,
+          staffRole: user?.role,
+          staffNumber: `ST-${Math.floor(Math.random() * 9000) + 1000}`,
+        }),
+      });
+      
+      setInputMessage('');
+      
+      // Update last message in conversation list
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.id === selectedConversation.id
+            ? { ...conv, lastMessage: inputMessage, timestamp: new Date() }
+            : conv
+        )
+      );
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
   };
 
   const handleResolveChat = () => {

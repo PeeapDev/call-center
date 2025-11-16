@@ -30,25 +30,28 @@ export default function UserDashboardPage() {
           transition={{ duration: 0.4, delay: 0.1 }}
           whileHover={{ y: -4, scale: 1.02 }}
         >
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-900">
-                <Phone className="w-5 h-5" />
-                Start a Call
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-blue-800">
-                Use the mobile app to call the Ministry hotline and speak with an agent.
-              </p>
-              <Badge variant="outline" className="border-blue-300 text-blue-800 bg-white">
-                Hotline: 117
-              </Badge>
-              <p className="text-xs text-blue-700">
-                Your calls will appear here once linked to your account.
-              </p>
-            </CardContent>
-          </Card>
+          <Link href="/dashboard/call-dialer">
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100 cursor-pointer hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-900">
+                  <Phone className="w-5 h-5" />
+                  Start a Call
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-blue-800">
+                  Make a direct call to the Ministry hotline and speak with an agent.
+                </p>
+                <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                  <Phone className="w-4 h-4 mr-2" />
+                  Call Now (117)
+                </Button>
+                <p className="text-xs text-blue-700">
+                  Click to open the call dialer and contact support
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         </motion.div>
 
         <motion.div
@@ -96,20 +99,50 @@ export default function UserDashboardPage() {
               <p className="text-sm text-purple-800">
                 When a case is opened for your report, it will appear here with its status.
               </p>
-              <Button
-                variant="outline"
-                className="border-purple-300 text-purple-900 bg-white"
-                disabled
-              >
-                Coming Soon
-              </Button>
+              <Link href="/dashboard/citizen-chat" className="w-full">
+                <Button
+                  variant="outline"
+                  className="w-full border-purple-300 text-purple-900 hover:bg-purple-50"
+                >
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  Get Help via Chat
+                </Button>
+              </Link>
               <p className="text-xs text-purple-700">
-                Web case tracking will be connected to your mobile account.
+                Chat with AI or live support staff for instant help
               </p>
             </CardContent>
           </Card>
         </motion.div>
       </div>
+
+      {/* Quick Chat Access */}
+      <Card className="border-0 shadow-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold mb-2">Need Help Right Now?</h3>
+              <p className="text-emerald-100 mb-4">
+                Chat with our AI assistant or connect with a live support agent
+              </p>
+              <div className="flex gap-3">
+                <Link href="/dashboard/citizen-chat">
+                  <Button className="bg-white text-emerald-600 hover:bg-emerald-50">
+                    <HelpCircle className="w-4 h-4 mr-2" />
+                    Start Chat
+                  </Button>
+                </Link>
+                <Link href="/dashboard/call-dialer">
+                  <Button variant="outline" className="border-white text-white hover:bg-emerald-600">
+                    <Phone className="w-4 h-4 mr-2" />
+                    Call 117
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Help & Support */}
       <motion.div

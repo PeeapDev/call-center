@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Send, Bot, User, Paperclip, Smile, Phone } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
-import { API_ENDPOINTS } from '@/lib/config';
+import { API_ENDPOINTS, buildApiUrl } from '@/lib/config';
 
 interface Message {
   id: string;
@@ -26,7 +26,8 @@ export default function CitizenChatPage() {
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  const [staffInfo, setStaffInfo] = useState<{ name: string; role: string; number: string } | null>(null);
+  const [staffInfo, setStaffInfo] = useState<any>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -96,29 +97,61 @@ export default function CitizenChatPage() {
         }
       }, 1000);
     } else {
-      // Send to live staff (WebSocket will be added later)
-      setTimeout(() => {
-        // Simulate staff response for now
-        if (!staffInfo && Math.random() > 0.5) {
-          setStaffInfo({
-            name: 'Sarah Johnson',
-            role: 'Support Agent',
-            number: 'SA-1024',
+      // Send to live staff via backend API
+      try {
+        const user = session?.user as any;
+        
+        // Create conversation if first message
+        if (!conversationId) {
+          const convResponse = await fetch(buildApiUrl('/support-chat/conversations'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              citizenId: user?.id || 'guest_' + Date.now(),
+              citizenName: user?.name || 'Guest User',
+              citizenEmail: user?.email || 'guest@example.com',
+              initialMessage: inputMessage,
+            }),
           });
 
-          const staffMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            sender: 'staff',
-            content: 'Hello! I\'m Sarah from the Ministry support team. I\'ll be happy to assist you.',
-            timestamp: new Date(),
-            staffName: 'Sarah Johnson',
-            staffRole: 'Support Agent',
-            staffNumber: 'SA-1024',
-          };
-          setMessages((prev) => [...prev, staffMessage]);
+          const convData = await convResponse.json();
+          if (convData.status === 'ok') {
+            setConversationId(convData.conversation.id);
+            setIsConnected(true);
+
+            const systemMessage: Message = {
+              id: Date.now().toString(),
+              sender: 'ai',
+              content: 'Your message has been sent to our support team. An agent will respond shortly.',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, systemMessage]);
+          }
+        } else {
+          // Send message to existing conversation
+          await fetch(buildApiUrl('/support-chat/messages'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              conversationId: conversationId,
+              senderId: session?.user?.id || 'guest',
+              senderType: 'citizen',
+              content: inputMessage,
+            }),
+          });
         }
         setIsTyping(false);
-      }, 2000);
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          content: 'Sorry, failed to send message. Please try again.',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+        setIsTyping(false);
+      }
     }
   };
 
