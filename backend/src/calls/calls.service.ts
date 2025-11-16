@@ -12,6 +12,7 @@ export class CallsService {
     '2': 'Teacher Complaints Queue',
     '3': 'School Facilities Queue',
     '4': 'General Inquiry Queue',
+    '9': 'Urgent Queue',
   };
 
   constructor(
@@ -38,6 +39,7 @@ export class CallsService {
       direction: CallDirection.INBOUND,
       ivrOption,
       queueName,
+      priority: ivrOption === '9' ? 'urgent' : 'normal',
       status: CallStatus.IN_QUEUE, // Always queue, let real agents claim
       assignedAgentId: undefined,
       assignedAgentName: undefined,

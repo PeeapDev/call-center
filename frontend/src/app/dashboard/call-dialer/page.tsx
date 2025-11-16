@@ -16,6 +16,9 @@ export default function CallDialerPage() {
   const [isMuted, setIsMuted] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [callStatus, setCallStatus] = useState<'idle' | 'dialing' | 'connected' | 'ended'>('idle');
+  const [ivrStage, setIvrStage] = useState<'idle' | 'menu' | 'routed'>('idle');
+  const [queueMessage, setQueueMessage] = useState<string | null>(null);
+  const [queuePosition, setQueuePosition] = useState<number | null>(null);
 
   const quickDial = [
     { number: '117', label: 'Ministry Hotline', icon: '📞' },
@@ -40,45 +43,48 @@ export default function CallDialerPage() {
 
   const handleCall = async () => {
     if (!phoneNumber) return;
-    
+
     setCallStatus('dialing');
     setIsCallActive(true);
+    setIvrStage('menu');
+    setQueueMessage(null);
+    setQueuePosition(null);
+  };
 
-    // Send call notification to admin
+  const handleIvrChoice = async (option: '1' | '2' | '3' | '4' | '9') => {
     try {
       const user = session?.user as any;
-      await fetch(buildApiUrl('/notifications'), {
+      const res = await fetch(buildApiUrl('/calls/initiate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'call',
-          title: '📞 Incoming Call',
-          message: `Citizen is calling ${phoneNumber}`,
-          payload: {
-            citizenId: user?.id || 'guest',
-            citizenName: user?.name || 'Guest User',
-            citizenEmail: user?.email || 'guest@example.com',
-            phone: phoneNumber,
-            timestamp: new Date().toISOString(),
-          },
+          phoneNumber,
+          ivrOption: option,
+          callerName: user?.name || 'Guest User',
+          userId: user?.id || undefined,
         }),
       });
-      console.log('✅ Call notification sent to admin');
+      const data = await res.json();
+
+      if (data.success) {
+        setQueueMessage(data.message);
+        setQueuePosition(data.queuePosition || null);
+        setCallStatus('connected');
+        setIvrStage('routed');
+
+        const interval = setInterval(() => {
+          setCallDuration((prev) => prev + 1);
+        }, 1000);
+        (window as any).callInterval = interval;
+      } else {
+        setQueueMessage(data.message || 'Failed to route call');
+        setCallStatus('ended');
+      }
     } catch (error) {
-      console.error('❌ Failed to send call notification:', error);
+      console.error('Failed to initiate call via IVR:', error);
+      setQueueMessage('Failed to connect call. Please try again.');
+      setCallStatus('ended');
     }
-
-    // Simulate call connection
-    setTimeout(() => {
-      setCallStatus('connected');
-      // Start timer
-      const interval = setInterval(() => {
-        setCallDuration(prev => prev + 1);
-      }, 1000);
-
-      // Store interval ID for cleanup
-      (window as any).callInterval = interval;
-    }, 2000);
   };
 
   const handleEndCall = () => {
@@ -93,6 +99,9 @@ export default function CallDialerPage() {
       setCallDuration(0);
       setPhoneNumber('');
       setIsMuted(false);
+      setIvrStage('idle');
+      setQueueMessage(null);
+      setQueuePosition(null);
     }, 1000);
   };
 
@@ -161,11 +170,17 @@ export default function CallDialerPage() {
                          callStatus === 'connected' ? `Connected - ${formatDuration(callDuration)}` :
                          'Call Ended'}
                       </Badge>
+                      {queueMessage && (
+                        <p className="mt-2 text-xs text-gray-500">
+                          {queueMessage}
+                          {queuePosition ? ` • Queue position: ${queuePosition}` : ''}
+                        </p>
+                      )}
                     </motion.div>
                   )}
                 </div>
 
-                {/* Keypad */}
+                {/* Keypad or IVR Menu */}
                 {!isCallActive ? (
                   <div className="grid grid-cols-3 gap-3">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, '*', 0, '#'].map((num, index) => (
@@ -181,23 +196,69 @@ export default function CallDialerPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="flex justify-center gap-4">
-                    <Button
-                      onClick={() => setIsMuted(!isMuted)}
-                      variant="outline"
-                      size="lg"
-                      className="w-20 h-20 rounded-full"
-                    >
-                      {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="w-20 h-20 rounded-full"
-                    >
-                      <Volume2 className="w-6 h-6" />
-                    </Button>
-                  </div>
+                  <>
+                    {ivrStage === 'menu' ? (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600 text-center">
+                          IVR Menu (web simulation):
+                        </p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => handleIvrChoice('1')}
+                          >
+                            Press 1
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => handleIvrChoice('2')}
+                          >
+                            Press 2
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => handleIvrChoice('3')}
+                          >
+                            Press 3
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => handleIvrChoice('4')}
+                          >
+                            Press 4
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="border-red-500 text-red-600"
+                            onClick={() => handleIvrChoice('9')}
+                          >
+                            Press 9 (Urgent)
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-500 text-center">
+                          In a real phone call, these would be DTMF key presses. Here we simulate the IVR flow on the web.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex justify-center gap-4">
+                        <Button
+                          onClick={() => setIsMuted(!isMuted)}
+                          variant="outline"
+                          size="lg"
+                          className="w-20 h-20 rounded-full"
+                        >
+                          {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="w-20 h-20 rounded-full"
+                        >
+                          <Volume2 className="w-6 h-6" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Action Buttons */}

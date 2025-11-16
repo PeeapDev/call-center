@@ -8,7 +8,7 @@ export class InitiateCallDto {
 
   @IsString()
   @IsNotEmpty()
-  @IsIn(['1', '2', '3', '4'], { message: 'IVR option must be 1, 2, 3, or 4' })
+  @IsIn(['1', '2', '3', '4', '9'], { message: 'IVR option must be 1, 2, 3, 4, or 9' })
   ivrOption: string;
 
   @IsString()

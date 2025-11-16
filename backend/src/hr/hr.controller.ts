@@ -1,5 +1,6 @@
 import { Controller, Post, Get, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { HrService } from './hr.service';
+import { AgentStatusType } from './agent-status.entity';
 
 class CreateUserDto {
   phoneNumber: string;
@@ -29,6 +30,11 @@ class UpdateWebRTCConfigDto {
   turnUsername?: string;
   turnPassword?: string;
   asteriskWsUrl: string;
+}
+
+class UpdateAgentStatusDto {
+  status: AgentStatusType;
+  currentCallId?: string;
 }
 
 @Controller('hr')
@@ -216,6 +222,154 @@ export class HrController {
         status: 'ok',
         config,
         message: 'WebRTC configuration updated',
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: error.message,
+      };
+    }
+  }
+
+  // Agent Status Management Endpoints
+
+  // Update agent status
+  @Put('agents/:agentId/status')
+  async updateAgentStatus(@Param('agentId') agentId: string, @Body() dto: UpdateAgentStatusDto) {
+    try {
+      await this.hrService.updateAgentStatus(agentId, dto.status, dto.currentCallId);
+
+      return {
+        status: 'ok',
+        message: `Agent status updated to ${dto.status}`,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: error.message,
+      };
+    }
+  }
+
+  // Get agent status
+  @Get('agents/:agentId/status')
+  async getAgentStatus(@Param('agentId') agentId: string) {
+    try {
+      const status = await this.hrService.getAgentStatus(agentId);
+
+      return {
+        status: 'ok',
+        agentStatus: status,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: error.message,
+      };
+    }
+  }
+
+  // Get all agent statuses
+  @Get('agents/status')
+  async getAllAgentStatuses() {
+    try {
+      const statuses = await this.hrService.getAllAgentStatuses();
+
+      return {
+        status: 'ok',
+        agentStatuses: statuses,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: error.message,
+      };
+    }
+  }
+
+  // Get available agents
+  @Get('agents/available')
+  async getAvailableAgents(@Query('agentIds') agentIds?: string) {
+    try {
+      const ids = agentIds ? agentIds.split(',') : undefined;
+      const agents = await this.hrService.getAvailableAgents(ids);
+
+      return {
+        status: 'ok',
+        availableAgents: agents,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: error.message,
+      };
+    }
+  }
+
+  // Get next available agent from list
+  @Post('agents/next-available')
+  async getNextAvailableAgent(@Body() body: { agentIds: string[] }) {
+    try {
+      const agent = await this.hrService.getNextAvailableAgent(body.agentIds);
+
+      return {
+        status: 'ok',
+        nextAgent: agent,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: error.message,
+      };
+    }
+  }
+
+  // Get agents with their current status
+  @Get('agents/with-status')
+  async getAgentsWithStatus(@Query('agentIds') agentIds?: string) {
+    try {
+      const ids = agentIds ? agentIds.split(',') : undefined;
+      const agents = await this.hrService.getAgentsWithStatus(ids);
+
+      return {
+        status: 'ok',
+        agents: agents,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: error.message,
+      };
+    }
+  }
+
+  // Mark agent as busy
+  @Post('agents/:agentId/busy')
+  async markAgentBusy(@Param('agentId') agentId: string, @Body() body: { callId: string }) {
+    try {
+      await this.hrService.markAgentBusy(agentId, body.callId);
+
+      return {
+        status: 'ok',
+        message: 'Agent marked as busy',
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: error.message,
+      };
+    }
+  }
+
+  // Mark agent as available
+  @Post('agents/:agentId/available')
+  async markAgentAvailable(@Param('agentId') agentId: string) {
+    try {
+      await this.hrService.markAgentAvailable(agentId);
+
+      return {
+        status: 'ok',
+        message: 'Agent marked as available',
       };
     } catch (error) {
       return {

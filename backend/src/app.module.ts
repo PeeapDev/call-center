@@ -13,6 +13,7 @@ import { CallsModule } from './calls/calls.module';
 import { AiModule } from './ai/ai.module';
 import { HrModule } from './hr/hr.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { MediaModule } from './media/media.module';
 
 @Module({
   imports: [
@@ -21,10 +22,15 @@ import { NotificationsModule } from './notifications/notifications.module';
       envFilePath: '.env',
     }),
     TypeOrmModule.forRoot({
-      type: 'sqlite',
-      database: 'callcenter.db',
+      type: 'postgres',
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      username: process.env.DB_USERNAME || 'postgres',
+      password: process.env.DB_PASSWORD || 'password',
+      database: process.env.DB_NAME || 'callcenter',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true, // Set to false in production
+      logging: process.env.NODE_ENV === 'development',
     }),
     AsteriskModule,
     ChatModule,
@@ -36,6 +42,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     AiModule,
     HrModule,
     NotificationsModule,
+    MediaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

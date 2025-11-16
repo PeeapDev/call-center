@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { AIKey } from './ai-key.entity';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import Database from 'better-sqlite3';
 
-interface AIKey {
+interface AIKeyConfig {
   name: string;
   description: string;
   masked: string;
@@ -23,8 +25,9 @@ interface TrainingDocument {
 
 @Injectable()
 export class AiService {
-  private db: Database.Database;
-  private readonly aiKeys: AIKey[] = [
+  @InjectRepository(AIKey)
+  private aiKeyRepository: Repository<AIKey>;
+  private readonly aiKeys: AIKeyConfig[] = [
     {
       name: 'GEMINI_API_KEY',
       description: 'Google Gemini AI for chatbot responses',
@@ -58,26 +61,13 @@ export class AiService {
   private documents: TrainingDocument[] = [];
   private readonly uploadsDir = path.join(process.cwd(), 'uploads', 'ai-training');
 
-  constructor() {
-    const dbPath = path.join(__dirname, '../../callcenter.db');
-    this.db = new Database(dbPath);
-    this.initDatabase();
-    // Ensure uploads directory exists
+  constructor(
+    @InjectRepository(AIKey)
+    aiKeyRepository: Repository<AIKey>,
+  ) {
+    this.aiKeyRepository = aiKeyRepository;
     this.initUploadsDir();
-    // Load existing documents
     this.loadDocuments();
-  }
-
-  private initDatabase() {
-    // Create table for AI keys
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS ai_keys (
-        name TEXT PRIMARY KEY,
-        value TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )
-    `);
   }
 
   private async initUploadsDir() {
@@ -110,7 +100,7 @@ export class AiService {
 
   async chat(message: string) {
     // Try to get key from database first, then fall back to environment variable
-    let geminiKey = this.getStoredKey('GEMINI_API_KEY');
+    let geminiKey = await this.getStoredKey('GEMINI_API_KEY');
     if (!geminiKey) {
       geminiKey = process.env.GEMINI_API_KEY || null;
     }
@@ -184,23 +174,22 @@ export class AiService {
     }
   }
 
-  private getStoredKey(keyName: string): string | null {
+  private async getStoredKey(keyName: string): Promise<string | null> {
     try {
-      const stmt = this.db.prepare('SELECT value FROM ai_keys WHERE name = ?');
-      const result = stmt.get(keyName) as { value: string } | undefined;
-      return result?.value || null;
+      const aiKey = await this.aiKeyRepository.findOne({ where: { name: keyName } });
+      return aiKey?.value || null;
     } catch (error) {
       return null;
     }
   }
 
   async getKeys() {
-    const keys = this.aiKeys.map((key) => {
+    const keys = await Promise.all(this.aiKeys.map(async (key) => {
       // Check database first, then environment
-      const storedValue = this.getStoredKey(key.name);
+      const storedValue = await this.getStoredKey(key.name);
       const envValue = process.env[key.envVar];
       const actualValue = storedValue || envValue;
-      
+
       const isConfigured = !!actualValue && actualValue.length > 0;
       const masked = isConfigured
         ? `${actualValue.substring(0, 4)}${'•'.repeat(12)}${actualValue.substring(actualValue.length - 4)}`
@@ -212,7 +201,7 @@ export class AiService {
         masked,
         isConfigured,
       };
-    });
+    }));
 
     return { status: 'ok', keys };
   }
@@ -232,16 +221,19 @@ export class AiService {
     }
 
     try {
-      const now = new Date().toISOString();
-      const stmt = this.db.prepare(`
-        INSERT INTO ai_keys (name, value, created_at, updated_at)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(name) DO UPDATE SET
-          value = excluded.value,
-          updated_at = excluded.updated_at
-      `);
-      
-      stmt.run(keyName, value, now, now);
+      // Check if key exists
+      let aiKey = await this.aiKeyRepository.findOne({ where: { name: keyName } });
+
+      if (aiKey) {
+        aiKey.value = value;
+      } else {
+        aiKey = this.aiKeyRepository.create({
+          name: keyName,
+          value: value,
+        });
+      }
+
+      await this.aiKeyRepository.save(aiKey);
 
       console.log(`✅ Saved ${keyName} to database: ${value.substring(0, 4)}...`);
 

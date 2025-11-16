@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Server, Database, Bell, Shield, Users, Key, Eye, EyeOff, Save, Brain } from 'lucide-react';
+import { Settings, Server, Database, Bell, Shield, Users, Key, Eye, EyeOff, Save, Brain, Music } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { API_ENDPOINTS, buildApiUrl } from '@/lib/config';
 
@@ -20,6 +20,11 @@ export default function SettingsPage() {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [keyValues, setKeyValues] = useState<Record<string, string>>({});
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
+  const [mediaFiles, setMediaFiles] = useState<any[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>('welcome');
 
   useEffect(() => {
     fetch(API_ENDPOINTS.health)
@@ -29,6 +34,9 @@ export default function SettingsPage() {
 
     // Fetch API keys
     fetchApiKeys();
+
+    // Fetch media files
+    fetchMedia();
   }, []);
 
   const fetchApiKeys = async () => {
@@ -40,6 +48,69 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Failed to fetch AI keys:', error);
+    }
+  };
+
+  const fetchMedia = async (subcategory?: string) => {
+    setMediaLoading(true);
+    try {
+      const url = subcategory
+        ? `${API_ENDPOINTS.media}?category=ivr&subcategory=${subcategory}`
+        : `${API_ENDPOINTS.media}?category=ivr`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.status === 'ok') {
+        setMediaFiles(data.media || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch media:', error);
+    } finally {
+      setMediaLoading(false);
+    }
+  };
+
+  const handleUploadMedia = async () => {
+    if (!selectedFile) return;
+    setUploadingMedia(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('category', 'ivr');
+      formData.append('subcategory', selectedSubcategory);
+      formData.append('name', selectedFile.name);
+
+      const res = await fetch(API_ENDPOINTS.mediaUpload, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        setSelectedFile(null);
+        await fetchMedia(selectedSubcategory);
+      } else {
+        alert(data.message || 'Failed to upload media');
+      }
+    } catch (error) {
+      alert('Failed to upload media');
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  const handleDeleteMedia = async (id: string) => {
+    if (!confirm('Delete this media file?')) return;
+    try {
+      const res = await fetch(`${API_ENDPOINTS.media}/${id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        await fetchMedia();
+      } else {
+        alert(data.message || 'Failed to delete media');
+      }
+    } catch (error) {
+      alert('Failed to delete media');
     }
   };
 
@@ -125,6 +196,95 @@ export default function SettingsPage() {
                 </div>
                 <Badge variant="default" className="bg-green-600">Active</Badge>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Media Library for IVR Audio */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Music className="w-5 h-5" />
+              Media Library (IVR Audio)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Upload and manage audio files for IVR prompts. These can be selected on IVR nodes in the Call Flow Builder.
+            </p>
+
+            <div className="space-y-4">
+              <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">IVR Area</label>
+                  <select
+                    value={selectedSubcategory}
+                    onChange={(e) => {
+                      setSelectedSubcategory(e.target.value);
+                      fetchMedia(e.target.value);
+                    }}
+                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  >
+                    <option value="welcome">Welcome Message</option>
+                    <option value="menu">Main Menu</option>
+                    <option value="exam">Exam Malpractice</option>
+                    <option value="teacher">Teacher Issues</option>
+                    <option value="student">Student Welfare</option>
+                    <option value="general">General Inquiry</option>
+                    <option value="operator">Operator Transfer</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">Audio File</label>
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    size="sm"
+                    onClick={handleUploadMedia}
+                    disabled={!selectedFile || uploadingMedia}
+                  >
+                    {uploadingMedia ? 'Uploading...' : 'Upload Audio'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 border rounded-lg p-3 max-h-64 overflow-y-auto">
+              {mediaLoading ? (
+                <p className="text-sm text-gray-500">Loading media...</p>
+              ) : mediaFiles.length === 0 ? (
+                <p className="text-sm text-gray-500">No media files uploaded yet.</p>
+              ) : (
+                <div className="space-y-2 text-sm">
+                  {mediaFiles.map((media) => (
+                    <div
+                      key={media.id}
+                      className="flex items-center justify-between p-2 border rounded-lg hover:bg-gray-50"
+                    >
+                      <div>
+                        <p className="font-medium text-gray-900">{media.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {media.subcategory ? `${media.subcategory} • ` : ''}{media.filename} • {new Date(media.uploadedAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteMedia(media.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

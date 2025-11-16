@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import Database from 'better-sqlite3';
-import * as path from 'path';
+import { HrService } from './hr.service';
 
 interface SIPCredentials {
   username: string;
@@ -19,64 +18,48 @@ interface WebRTCConfig {
 
 @Injectable()
 export class WebRTCService {
-  private db: Database.Database;
-
-  constructor() {
-    const dbPath = path.join(__dirname, '../../callcenter.db');
-    this.db = new Database(dbPath);
-  }
+  constructor(private readonly hrService: HrService) {}
 
   async getUserSIPCredentials(userId: string): Promise<SIPCredentials | null> {
-    const stmt = this.db.prepare(`
-      SELECT 
-        sip_username as username,
-        sip_password as password,
-        sip_extension as extension
-      FROM users
-      WHERE id = ?
-    `);
+    try {
+      const user = await this.hrService.getUserById(userId);
 
-    const user = stmt.get(userId) as any;
+      if (!user || !user.sipUsername) {
+        return null;
+      }
 
-    if (!user || !user.username) {
+      // Get WebRTC config for WS URL
+      const config = await this.hrService.getWebRTCConfig();
+
+      return {
+        username: user.sipUsername,
+        password: user.sipPassword!,
+        extension: user.sipExtension!,
+        wsUrl: config.asteriskWsUrl || 'ws://localhost:8088/ws',
+      };
+    } catch (error) {
+      console.error('Error getting SIP credentials:', error);
       return null;
     }
-
-    // Get WebRTC config for WS URL
-    const configStmt = this.db.prepare(`
-      SELECT asterisk_ws_url as wsUrl
-      FROM webrtc_config
-      WHERE id = 'default'
-    `);
-
-    const config = configStmt.get() as any;
-
-    return {
-      username: user.username,
-      password: user.password,
-      extension: user.extension,
-      wsUrl: config?.wsUrl || 'ws://localhost:8088/ws',
-    };
   }
 
   async getWebRTCConfiguration(): Promise<WebRTCConfig> {
-    const stmt = this.db.prepare(`
-      SELECT 
-        stun_server as stunServer,
-        turn_server as turnServer,
-        turn_username as turnUsername,
-        turn_password as turnPassword,
-        asterisk_ws_url as asteriskWsUrl
-      FROM webrtc_config
-      WHERE id = 'default'
-    `);
-
-    const config = stmt.get() as any;
-
-    return config || {
-      stunServer: 'stun:stun.l.google.com:19302',
-      asteriskWsUrl: 'ws://localhost:8088/ws',
-    };
+    try {
+      const config = await this.hrService.getWebRTCConfig();
+      return {
+        stunServer: config.stunServer,
+        turnServer: config.turnServer,
+        turnUsername: config.turnUsername,
+        turnPassword: config.turnPassword,
+        asteriskWsUrl: config.asteriskWsUrl,
+      };
+    } catch (error) {
+      console.error('Error getting WebRTC config:', error);
+      return {
+        stunServer: 'stun:stun.l.google.com:19302',
+        asteriskWsUrl: 'ws://localhost:8088/ws',
+      };
+    }
   }
 
   async getICEServers(): Promise<any[]> {
@@ -150,40 +133,42 @@ exten => ${extension},1,NoOp(Incoming call to ${username})
   }
 
   async getAllAgentConfigs(): Promise<string> {
-    const stmt = this.db.prepare(`
-      SELECT 
-        sip_username as username,
-        sip_password as password,
-        sip_extension as extension,
-        name
-      FROM users
-      WHERE sip_username IS NOT NULL AND accountType IN ('agent', 'supervisor', 'admin')
-    `);
+    try {
+      const agents = await this.hrService.getUsers({
+        accountType: 'agent',
+        isActive: true
+      });
 
-    const agents = stmt.all() as any[];
+      const sipAgents = agents.filter(agent => agent.sipUsername);
 
-    let pjsipConfig = '; ===== Auto-generated WebRTC Agent Configurations =====\n';
-    let dialplanConfig = '; ===== Auto-generated Agent Extensions =====\n';
+      let pjsipConfig = '; ===== Auto-generated WebRTC Agent Configurations =====\n';
+      let dialplanConfig = '; ===== Auto-generated Agent Extensions =====\n';
 
-    for (const agent of agents) {
-      pjsipConfig += this.generatePJSIPConfig(
-        agent.username,
-        agent.password,
-        agent.extension,
-      );
+      for (const agent of sipAgents) {
+        if (agent.sipUsername && agent.sipPassword && agent.sipExtension) {
+          pjsipConfig += this.generatePJSIPConfig(
+            agent.sipUsername,
+            agent.sipPassword,
+            agent.sipExtension,
+          );
 
-      dialplanConfig += this.generateDialplanConfig(
-        agent.extension,
-        agent.username,
-      );
-    }
+          dialplanConfig += this.generateDialplanConfig(
+            agent.sipExtension,
+            agent.sipUsername,
+          );
+        }
+      }
 
-    return `
+      return `
 PJSIP Configuration (add to /etc/asterisk/pjsip.conf):
 ${pjsipConfig}
 
 Dialplan Configuration (add to /etc/asterisk/extensions.conf):
 ${dialplanConfig}
 `;
+    } catch (error) {
+      console.error('Error getting agent configs:', error);
+      return 'Error generating configurations';
+    }
   }
 }

@@ -23,6 +23,8 @@ out/
 *.sqlite
 *.sqlite3
 callcenter.db
+postgres_data/
+postgresql_data/
 
 # Logs
 logs/

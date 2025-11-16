@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, User, Clock, MessageSquare, Phone, Settings } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,13 +24,41 @@ interface Staff {
   extension?: string;
 }
 
+interface MediaItem {
+  id: string;
+  name: string;
+  category: string;
+  description?: string;
+  filename: string;
+  uploadedAt: string;
+}
+
+interface Agent {
+  id: string;
+  name: string;
+  status: string;
+  accountType: string;
+  extension?: string;
+}
+
 export function FlowNodeConfig({ node, onClose, onUpdate }: FlowNodeConfigProps) {
-  const [config, setConfig] = useState(node.data || {});
+  const [config, setConfig] = useState({
+    ...node.data,
+    nodeType: node.data?.nodeType || 'default',
+    assignedAgents: node.data?.assignedAgents || [],
+    conditionValue: node.data?.conditionValue || {},
+  });
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ivrMedia, setIvrMedia] = useState<MediaItem[]>([]);
+  const [loadingMedia, setLoadingMedia] = useState(false);
+  const [availableAgents, setAvailableAgents] = useState<Agent[]>([]);
+  const [loadingAgents, setLoadingAgents] = useState(false);
 
   useEffect(() => {
     fetchStaff();
+    fetchIvrMedia(config.ivrArea || 'menu');
+    fetchAvailableAgents();
   }, []);
 
   const fetchStaff = async () => {
@@ -50,8 +79,43 @@ export function FlowNodeConfig({ node, onClose, onUpdate }: FlowNodeConfigProps)
     }
   };
 
+  const fetchIvrMedia = async (subcategory?: string) => {
+    setLoadingMedia(true);
+    try {
+      const url = subcategory
+        ? buildApiUrl(`/media?category=ivr&subcategory=${subcategory}`)
+        : buildApiUrl('/media?category=ivr');
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.status === 'ok' && Array.isArray(data.media)) {
+        setIvrMedia(data.media);
+      }
+    } catch (error) {
+      console.error('Failed to fetch IVR media:', error);
+    } finally {
+      setLoadingMedia(false);
+    }
+  };
+
+  const fetchAvailableAgents = async () => {
+    setLoadingAgents(true);
+    try {
+      const response = await fetch(buildApiUrl('/flow-builder/agents/available'));
+      const data = await response.json();
+      if (data.status === 'ok' && Array.isArray(data.agents)) {
+        setAvailableAgents(data.agents);
+      }
+    } catch (error) {
+      console.error('Failed to fetch available agents:', error);
+    } finally {
+      setLoadingAgents(false);
+    }
+  };
+
   const handleSave = () => {
-    onUpdate(node.id, config);
+    // Ensure nodeType is preserved
+    const updatedConfig = { ...config, nodeType: config.nodeType || node.data?.nodeType };
+    onUpdate(node.id, updatedConfig);
     onClose();
   };
 
@@ -64,13 +128,15 @@ export function FlowNodeConfig({ node, onClose, onUpdate }: FlowNodeConfigProps)
         return <MessageSquare className="w-5 h-5" />;
       case 'time':
         return <Clock className="w-5 h-5" />;
+      case 'agent':
+        return <User className="w-5 h-5" />;
       default:
         return <Settings className="w-5 h-5" />;
     }
   };
 
   const renderConfigFields = () => {
-    const type = node.type || config.type;
+    const type = config.nodeType || node.type || config.type;
 
     switch (type) {
       case 'queue':
@@ -83,6 +149,36 @@ export function FlowNodeConfig({ node, onClose, onUpdate }: FlowNodeConfigProps)
                 onChange={(e) => setConfig({ ...config, queueName: e.target.value })}
                 placeholder="e.g., Technical Support"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>IVR Audio (Media File)</Label>
+              <select
+                value={config.ivrMediaId || ''}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    ivrMediaId: e.target.value || undefined,
+                  })
+                }
+                className="w-full border rounded-md p-2"
+              >
+                <option value="">No audio selected (use text prompt only)</option>
+                {loadingMedia ? (
+                  <option value="" disabled>
+                    Loading media...
+                  </option>
+                ) : (
+                  ivrMedia.map((media) => (
+                    <option key={media.id} value={media.id}>
+                      {media.name}
+                    </option>
+                  ))
+                )}
+              </select>
+              <p className="text-xs text-gray-500">
+                Select a pre-recorded audio file uploaded from Settings &gt; Media Library.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -150,6 +246,31 @@ export function FlowNodeConfig({ node, onClose, onUpdate }: FlowNodeConfigProps)
         return (
           <>
             <div className="space-y-2">
+              <Label>IVR Area</Label>
+              <select
+                value={config.ivrArea || 'menu'}
+                onChange={(e) => {
+                  const newArea = e.target.value;
+                  setConfig({ ...config, ivrArea: newArea });
+                  fetchIvrMedia(newArea); // Fetch media for this area
+                }}
+                className="w-full border rounded-md p-2"
+              >
+                <option value="welcome">Welcome Message</option>
+                <option value="menu">Main Menu</option>
+                <option value="exam">Exam Malpractice</option>
+                <option value="teacher">Teacher Issues</option>
+                <option value="student">Student Welfare</option>
+                <option value="general">General Inquiry</option>
+                <option value="operator">Operator Transfer</option>
+                <option value="other">Other</option>
+              </select>
+              <p className="text-xs text-gray-500">
+                Select the IVR area to associate audio files with this node.
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label>IVR Message</Label>
               <Textarea
                 value={config.message || ''}
@@ -157,6 +278,36 @@ export function FlowNodeConfig({ node, onClose, onUpdate }: FlowNodeConfigProps)
                 placeholder="Welcome message or menu options..."
                 rows={3}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>IVR Audio (Media File)</Label>
+              <select
+                value={config.ivrMediaId || ''}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    ivrMediaId: e.target.value || undefined,
+                  })
+                }
+                className="w-full border rounded-md p-2"
+              >
+                <option value="">No audio selected (use text prompt only)</option>
+                {loadingMedia ? (
+                  <option value="" disabled>
+                    Loading media...
+                  </option>
+                ) : (
+                  ivrMedia.map((media) => (
+                    <option key={media.id} value={media.id}>
+                      {media.name} {media.subcategory && `(${media.subcategory})`}
+                    </option>
+                  ))
+                )}
+              </select>
+              <p className="text-xs text-gray-500">
+                Select a pre-recorded audio file uploaded from Settings &gt; Media Library for this IVR area.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -186,6 +337,91 @@ export function FlowNodeConfig({ node, onClose, onUpdate }: FlowNodeConfigProps)
                 min="5"
                 max="60"
               />
+            </div>
+          </>
+        );
+
+      case 'agent':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label>Agent Selection</Label>
+              <p className="text-sm text-gray-600">
+                Select agents that can handle calls at this point. The system will automatically route to the first available agent.
+                If no agents are available, the call will continue to the next node in the flow.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Available Agents</Label>
+              <div className="border rounded-lg p-3 max-h-64 overflow-y-auto space-y-2">
+                {loadingAgents ? (
+                  <p className="text-sm text-gray-500">Loading agents...</p>
+                ) : availableAgents.length === 0 ? (
+                  <p className="text-sm text-gray-500">No agents available</p>
+                ) : (
+                  availableAgents.map((agent) => (
+                    <label
+                      key={agent.id}
+                      className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-3 rounded border"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={(config.assignedAgents || []).includes(agent.id)}
+                        onChange={(e) => {
+                          const current = config.assignedAgents || [];
+                          const updated = e.target.checked
+                            ? [...current, agent.id]
+                            : current.filter((id: string) => id !== agent.id);
+                          setConfig({ ...config, assignedAgents: updated });
+                        }}
+                        className="rounded w-4 h-4"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">{agent.name}</p>
+                          <Badge
+                            variant={agent.status === 'available' ? 'default' : 'secondary'}
+                            className={`text-xs ${
+                              agent.status === 'available'
+                                ? 'bg-green-600'
+                                : agent.status === 'busy'
+                                ? 'bg-red-600'
+                                : 'bg-gray-600'
+                            }`}
+                          >
+                            {agent.status}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-gray-500">
+                            {agent.accountType} {agent.extension && `• Ext: ${agent.extension}`}
+                          </span>
+                        </div>
+                      </div>
+                    </label>
+                  ))
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                Check the agents that should handle calls at this routing point. The system will prioritize available agents.
+              </p>
+            </div>
+
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs font-medium text-blue-900 mb-1">
+                💡 How Agent Routing Works
+              </p>
+              <p className="text-xs text-blue-800 mb-2">
+                <strong>Flow Example:</strong>
+              </p>
+              <p className="text-xs text-blue-800">
+                1. <strong>Agent Node</strong> → Checks assigned agents, routes to first available<br/>
+                2. <strong>If no agents available</strong> → Connects to <strong>Condition Node</strong><br/>
+                3. <strong>Condition Node</strong> → Checks if queue time &gt; 2 minutes<br/>
+                4. <strong>If TRUE</strong> → Routes to <strong>Default Agent Node</strong><br/>
+                5. <strong>If FALSE</strong> → Routes to <strong>General Queue</strong>
+              </p>
             </div>
           </>
         );
@@ -296,38 +532,202 @@ export function FlowNodeConfig({ node, onClose, onUpdate }: FlowNodeConfigProps)
             <div className="space-y-2">
               <Label>Condition Type</Label>
               <select
-                value={config.conditionType || 'caller_id'}
+                value={config.conditionType || 'queue_time'}
                 onChange={(e) => setConfig({ ...config, conditionType: e.target.value })}
                 className="w-full border rounded-md p-2"
               >
-                <option value="caller_id">Caller ID</option>
-                <option value="time">Time of Day</option>
-                <option value="queue_length">Queue Length</option>
                 <option value="agent_available">Agent Availability</option>
-                <option value="custom">Custom Variable</option>
+                <option value="time_check">Time Check</option>
+                <option value="queue_time">Queue Time</option>
+                <option value="custom">Custom Condition</option>
               </select>
+              <p className="text-sm text-gray-600">
+                Choose what condition to evaluate at this step.
+              </p>
             </div>
 
-            <div className="space-y-2">
-              <Label>Condition Value</Label>
-              <Input
-                value={config.conditionValue || ''}
-                onChange={(e) => setConfig({ ...config, conditionValue: e.target.value })}
-                placeholder="Enter condition criteria..."
-              />
-            </div>
+            {config.conditionType === 'agent_available' && (
+              <div className="space-y-2">
+                <Label>Select Agents to Check</Label>
+                <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                  {loadingAgents ? (
+                    <p className="text-sm text-gray-500">Loading agents...</p>
+                  ) : availableAgents.length === 0 ? (
+                    <p className="text-sm text-gray-500">No agents available</p>
+                  ) : (
+                    availableAgents.map((agent) => (
+                      <label
+                        key={agent.id}
+                        className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={(config.conditionValue?.agentIds || []).includes(agent.id)}
+                          onChange={(e) => {
+                            const current = config.conditionValue?.agentIds || [];
+                            const updated = e.target.checked
+                              ? [...current, agent.id]
+                              : current.filter((id: string) => id !== agent.id);
+                            setConfig({
+                              ...config,
+                              conditionValue: { ...config.conditionValue, agentIds: updated }
+                            });
+                          }}
+                          className="rounded"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{agent.name}</p>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={agent.status === 'available' ? 'default' : 'secondary'}
+                              className={`text-xs ${
+                                agent.status === 'available'
+                                  ? 'bg-green-600'
+                                  : agent.status === 'busy'
+                                  ? 'bg-red-600'
+                                  : 'bg-gray-600'
+                              }`}
+                            >
+                              {agent.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Condition passes if at least one of these agents is available.
+                </p>
+              </div>
+            )}
+
+            {config.conditionType === 'time_check' && (
+              <div className="space-y-2">
+                <Label>Time Range</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Start Time</Label>
+                    <Input
+                      type="time"
+                      value={config.conditionValue?.startHour ?
+                        `${String(config.conditionValue.startHour).padStart(2, '0')}:00` : '09:00'}
+                      onChange={(e) => {
+                        const hour = parseInt(e.target.value.split(':')[0]);
+                        setConfig({
+                          ...config,
+                          conditionValue: { ...config.conditionValue, startHour: hour }
+                        });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">End Time</Label>
+                    <Input
+                      type="time"
+                      value={config.conditionValue?.endHour ?
+                        `${String(config.conditionValue.endHour).padStart(2, '0')}:00` : '17:00'}
+                      onChange={(e) => {
+                        const hour = parseInt(e.target.value.split(':')[0]);
+                        setConfig({
+                          ...config,
+                          conditionValue: { ...config.conditionValue, endHour: hour }
+                        });
+                      }}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Condition passes if current time is within this range.
+                </p>
+              </div>
+            )}
+
+            {config.conditionType === 'queue_time' && (
+              <div className="space-y-2">
+                <Label>Queue Time Threshold</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    value={config.conditionValue?.thresholdMinutes || '2'}
+                    onChange={(e) => setConfig({
+                      ...config,
+                      conditionValue: { ...config.conditionValue, thresholdMinutes: parseInt(e.target.value) || 2 }
+                    })}
+                    min="1"
+                    max="60"
+                    className="w-20"
+                  />
+                  <span className="text-sm text-gray-600">minutes</span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Condition passes if the call has been queuing for at least this many minutes.
+                  Use this after an Agent Node to check for long-waiting calls.
+                </p>
+              </div>
+            )}
+
+            {config.conditionType === 'custom' && (
+              <div className="space-y-2">
+                <Label>Custom Condition</Label>
+                <Input
+                  value={config.conditionValue?.expression || ''}
+                  onChange={(e) => setConfig({
+                    ...config,
+                    conditionValue: { ...config.conditionValue, expression: e.target.value }
+                  })}
+                  placeholder="Enter custom condition logic"
+                />
+                <p className="text-xs text-gray-500">
+                  Custom condition evaluation (for advanced use cases).
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={config.description || ''}
-                onChange={(e) => setConfig({ ...config, description: e.target.value })}
-                placeholder="Describe what this condition checks..."
-                rows={2}
-              />
+              <Label>Routing Logic</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">If Condition TRUE</Label>
+                  <Input
+                    value={config.conditionValue?.trueNode || ''}
+                    onChange={(e) => setConfig({
+                      ...config,
+                      conditionValue: { ...config.conditionValue, trueNode: e.target.value }
+                    })}
+                    placeholder="Next node ID (e.g., agent-node-1)"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">If Condition FALSE</Label>
+                  <Input
+                    value={config.conditionValue?.falseNode || ''}
+                    onChange={(e) => setConfig({
+                      ...config,
+                      conditionValue: { ...config.conditionValue, falseNode: e.target.value }
+                    })}
+                    placeholder="Next node ID (e.g., queue-general)"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                Specify which node to route to when the condition passes (TRUE) or fails (FALSE).
+              </p>
+            </div>
+
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-xs font-medium text-green-900 mb-1">
+                🎯 Usage Tip
+              </p>
+              <p className="text-xs text-green-800">
+                Connect this node after an Agent Node. When no agents are available,
+                this condition will check queue time and route to fallback options.
+              </p>
             </div>
           </>
         );
+
+
 
       default:
         return (

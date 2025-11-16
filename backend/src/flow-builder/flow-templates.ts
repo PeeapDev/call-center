@@ -5,11 +5,17 @@
 
 export interface FlowNode {
   id: string;
-  type: 'welcome' | 'menu' | 'input' | 'action' | 'end';
+  type: 'welcome' | 'menu' | 'input' | 'action' | 'end' | 'agent' | 'condition';
   message: string;
   audioUrl?: string;
+  audioSubcategory?: string; // Maps to media subcategory
   options?: FlowOption[];
   nextNode?: string;
+  // Agent-specific fields
+  assignedAgents?: string[]; // Agent IDs
+  // Condition-specific fields
+  conditionType?: 'agent_available' | 'time_check' | 'queue_time' | 'custom';
+  conditionValue?: any;
 }
 
 export interface FlowOption {
@@ -35,61 +41,68 @@ export const SIMPLE_FOUR_OPTION_TEMPLATE: FlowTemplate = {
   description: 'Basic IVR with 4 service options - Ministry of Education',
   isDefault: true,
   nodes: [
-    {
-      id: 'welcome',
-      type: 'welcome',
-      message:
-        'Welcome to the Ministry of Education Call Center. Your call is important to us.',
-      nextNode: 'main-menu',
-    },
-    {
-      id: 'main-menu',
-      type: 'menu',
-      message:
-        'Please select from the following options: Press 1 for Exam Malpractice Reports. Press 2 for Teacher Issues and Complaints. Press 3 for Student Welfare Concerns. Press 4 for General Education Inquiries. Press 0 to speak with an operator.',
-      options: [
-        { key: '1', label: 'Exam Malpractice', nextNode: 'queue-exam' },
-        { key: '2', label: 'Teacher Issues', nextNode: 'queue-teacher' },
-        { key: '3', label: 'Student Welfare', nextNode: 'queue-student' },
-        { key: '4', label: 'General Inquiry', nextNode: 'queue-general' },
-        { key: '0', label: 'Operator', nextNode: 'queue-operator' },
-      ],
-    },
-    {
-      id: 'queue-exam',
-      type: 'action',
-      message:
-        'Thank you. You will be connected to our Exam Malpractice department. Please hold while we transfer your call.',
-      nextNode: 'end',
-    },
-    {
-      id: 'queue-teacher',
-      type: 'action',
-      message:
-        'Thank you. You will be connected to our Teacher Support department. Please hold while we transfer your call.',
-      nextNode: 'end',
-    },
-    {
-      id: 'queue-student',
-      type: 'action',
-      message:
-        'Thank you. You will be connected to our Student Welfare department. Please hold while we transfer your call.',
-      nextNode: 'end',
-    },
-    {
-      id: 'queue-general',
-      type: 'action',
-      message:
-        'Thank you. You will be connected to a general support agent. Please hold while we transfer your call.',
-      nextNode: 'end',
-    },
-    {
-      id: 'queue-operator',
-      type: 'action',
-      message:
-        'Please hold while we connect you to an operator.',
-      nextNode: 'end',
-    },
+     {
+       id: 'welcome',
+       type: 'welcome',
+       message:
+         'Welcome to the Ministry of Education Call Center. Your call is important to us.',
+       audioSubcategory: 'welcome',
+       nextNode: 'main-menu',
+     },
+     {
+       id: 'main-menu',
+       type: 'menu',
+       message:
+         'Please select from the following options: Press 1 for Exam Malpractice Reports. Press 2 for Teacher Issues and Complaints. Press 3 for Student Welfare Concerns. Press 4 for General Education Inquiries. Press 0 to speak with an operator.',
+       audioSubcategory: 'menu',
+       options: [
+         { key: '1', label: 'Exam Malpractice', nextNode: 'queue-exam' },
+         { key: '2', label: 'Teacher Issues', nextNode: 'queue-teacher' },
+         { key: '3', label: 'Student Welfare', nextNode: 'queue-student' },
+         { key: '4', label: 'General Inquiry', nextNode: 'queue-general' },
+         { key: '0', label: 'Operator', nextNode: 'queue-operator' },
+       ],
+     },
+     {
+       id: 'queue-exam',
+       type: 'action',
+       message:
+         'Thank you. You will be connected to our Exam Malpractice department. Please hold while we transfer your call.',
+       audioSubcategory: 'exam',
+       nextNode: 'end',
+     },
+     {
+       id: 'queue-teacher',
+       type: 'action',
+       message:
+         'Thank you. You will be connected to our Teacher Support department. Please hold while we transfer your call.',
+       audioSubcategory: 'teacher',
+       nextNode: 'end',
+     },
+     {
+       id: 'queue-student',
+       type: 'action',
+       message:
+         'Thank you. You will be connected to our Student Welfare department. Please hold while we transfer your call.',
+       audioSubcategory: 'student',
+       nextNode: 'end',
+     },
+     {
+       id: 'queue-general',
+       type: 'action',
+       message:
+         'Thank you. You will be connected to a general support agent. Please hold while we transfer your call.',
+       audioSubcategory: 'general',
+       nextNode: 'end',
+     },
+     {
+       id: 'queue-operator',
+       type: 'action',
+       message:
+         'Please hold while we connect you to an operator.',
+       audioSubcategory: 'operator',
+       nextNode: 'end',
+     },
     {
       id: 'end',
       type: 'end',

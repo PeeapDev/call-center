@@ -64,4 +64,36 @@ export class FlowBuilderController {
   validateTemplate(@Body() template: FlowTemplate): { valid: boolean; errors: string[] } {
     return this.flowBuilderService.validateTemplate(template);
   }
+
+  /**
+   * Process agent node - find available agent
+   */
+  @Post('process-agent/:nodeId')
+  async processAgentNode(
+    @Param('nodeId') nodeId: string,
+    @Body() body: { callId?: string },
+  ): Promise<{ agent: any; nextNode: string }> {
+    return this.flowBuilderService.processAgentNode(nodeId, body.callId);
+  }
+
+  /**
+   * Process condition node
+   */
+  @Post('process-condition/:nodeId')
+  async processConditionNode(
+    @Param('nodeId') nodeId: string,
+    @Body() body: { context?: any },
+  ): Promise<{ nextNode: string }> {
+    const nextNode = await this.flowBuilderService.processConditionNode(nodeId, body.context);
+    return { nextNode };
+  }
+
+  /**
+   * Get all available agents for flow configuration
+   */
+  @Get('agents/available')
+  async getAvailableAgentsForFlow(): Promise<{ status: string; agents: any[] }> {
+    const agents = await this.flowBuilderService.getAvailableAgentsForFlow();
+    return { status: 'ok', agents };
+  }
 }

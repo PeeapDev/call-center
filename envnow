@@ -1,0 +1,55 @@
+# ===========================================
+# CALL CENTER SYSTEM ENVIRONMENT CONFIGURATION
+# ===========================================
+# ⚠️  SECURITY WARNING: Change all default passwords before production!
+# Generate a secure JWT secret: openssl rand -base64 64
+
+# ===========================================
+# DATABASE CONFIGURATION (PostgreSQL)
+# ===========================================
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=password
+DB_NAME=callcenter
+
+# ===========================================
+# SECURITY & AUTHENTICATION
+# ===========================================
+JWT_SECRET=super_secure_jwt_secret_change_this_in_production_123456789012345678901234567890
+
+# ===========================================
+# ASTERISK TELEPHONY CONFIGURATION
+# ===========================================
+ASTERISK_ARI_URL=http://localhost:8088/ari
+ASTERISK_ARI_USER=callcenter
+ASTERISK_ARI_PASSWORD=change_me_ari
+
+ASTERISK_AMI_HOST=localhost
+ASTERISK_AMI_PORT=5038
+ASTERISK_AMI_USER=callcenter
+ASTERISK_AMI_PASSWORD=change_me_ami
+
+# ===========================================
+# BACKEND SERVER CONFIGURATION
+# ===========================================
+PORT=3001
+
+# ===========================================
+# AI SERVICE API KEYS
+# ===========================================
+GEMINI_API_KEY=AIzaSyAfKjwk8BllPGx42ocHSFxYFlUXi8Y5Vcc
+DEEPSEEK_API_KEY=
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+
+# ===========================================
+# WEBRTC CONFIGURATION
+# ===========================================
+WEBRTC_STUN_SERVER=stun:stun.l.google.com:19302
+WEBRTC_WS_URL=ws://localhost:8088/ws
+
+# ===========================================
+# DEVELOPMENT SETTINGS
+# ===========================================
+NODE_ENV=development

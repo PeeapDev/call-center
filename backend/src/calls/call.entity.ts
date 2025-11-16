@@ -35,6 +35,9 @@ export class Call {
   @Column()
   status: CallStatus;
 
+  @Column({ type: 'text', default: 'normal' })
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+
   @Column({ nullable: true })
   ivrOption: string;
 
