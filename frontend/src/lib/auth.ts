@@ -24,25 +24,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         try {
-          // Call backend API to authenticate
-          const response = await fetch(`${API_ENDPOINTS.hrUsers}`);
-          const data = await response.json();
-
-          if (data.status !== 'ok') {
-            throw new Error('Failed to fetch users');
-          }
-
-          // Find user by phone number
-          const user = data.users.find(
-            (u: any) => u.phoneNumber === credentials?.phoneNumber
-          );
-
-          if (!user) {
-            throw new Error('User not found');
-          }
-
-          // Verify password (backend stores hashed password)
-          // We need to call a backend login endpoint that verifies the password
+          // Call backend login endpoint to verify credentials
           const loginResponse = await fetch(`${API_ENDPOINTS.hrUsers}/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -54,9 +36,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           const loginData = await loginResponse.json();
 
-          if (loginData.status !== 'ok') {
+          if (loginData.status !== 'ok' || !loginData.user) {
             throw new Error('Invalid phone number or password');
           }
+
+          const user = loginData.user;
 
           // Store phone in localStorage for later use
           if (typeof window !== 'undefined') {
@@ -72,7 +56,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           };
         } catch (error) {
           console.error('Authentication error:', error);
-          throw new Error('Invalid phone number or password');
+          return null;
         }
       },
     }),
