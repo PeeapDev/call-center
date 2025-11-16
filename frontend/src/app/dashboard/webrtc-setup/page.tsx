@@ -13,18 +13,24 @@ import {
   Wifi,
   Lock,
   Code,
+  Copy,
+  Key,
+  User,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { API_ENDPOINTS } from '@/lib/config';
 
 export default function WebRTCSetupPage() {
   const [webrtcSupported, setWebrtcSupported] = useState(false);
   const [micPermission, setMicPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
   const [testCallStatus, setTestCallStatus] = useState<'idle' | 'calling' | 'connected'>('idle');
+  const [myCredentials, setMyCredentials] = useState<any>(null);
+  const [loadingCredentials, setLoadingCredentials] = useState(true);
 
   useEffect(() => {
     // Check WebRTC support
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
       setWebrtcSupported(true);
     }
 
@@ -36,7 +42,40 @@ export default function WebRTCSetupPage() {
         // Permissions API not fully supported
       });
     }
+
+    // Fetch current user's credentials
+    fetchMyCredentials();
   }, []);
+
+  const fetchMyCredentials = async () => {
+    try {
+      // Get current user from session storage or local storage
+      const userPhone = localStorage.getItem('userPhone');
+      if (!userPhone) {
+        setLoadingCredentials(false);
+        return;
+      }
+
+      const response = await fetch(`${API_ENDPOINTS.hrUsers}`);
+      const data = await response.json();
+      
+      if (data.status === 'ok') {
+        const currentUser = data.users.find((u: any) => u.phoneNumber === userPhone);
+        if (currentUser && currentUser.sipUsername) {
+          setMyCredentials(currentUser);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch credentials:', error);
+    } finally {
+      setLoadingCredentials(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    alert(`${label} copied to clipboard!`);
+  };
 
   const requestMicPermission = async () => {
     try {
@@ -73,6 +112,90 @@ export default function WebRTCSetupPage() {
           Enable browser-based calling for your agents
         </p>
       </motion.div>
+
+      {/* My WebRTC Credentials */}
+      {myCredentials && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.05 }}
+        >
+          <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-indigo-50">
+            <CardHeader className="border-b bg-gradient-to-r from-purple-100 to-indigo-100">
+              <CardTitle className="flex items-center gap-2">
+                <Key className="w-6 h-6 text-purple-600" />
+                My WebRTC Credentials
+              </CardTitle>
+              <p className="text-sm text-gray-600 mt-2">
+                Use these credentials to register your WebRTC phone. Your SIP password is the same as your login password.
+              </p>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-white rounded-lg border-2 border-purple-100">
+                  <div className="flex items-center gap-3">
+                    <User className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">SIP Username</p>
+                      <p className="text-lg font-mono font-bold text-gray-900">{myCredentials.sipUsername}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(myCredentials.sipUsername, 'Username')}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Copy username"
+                  >
+                    <Copy className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-white rounded-lg border-2 border-purple-100">
+                  <div className="flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">SIP Password</p>
+                      <p className="text-sm text-gray-700">Same as your login password</p>
+                    </div>
+                  </div>
+                  <Badge className="bg-blue-500">Login Password</Badge>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-white rounded-lg border-2 border-purple-100">
+                  <div className="flex items-center gap-3">
+                    <Phone className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Extension</p>
+                      <p className="text-lg font-mono font-bold text-gray-900">{myCredentials.sipExtension}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(myCredentials.sipExtension, 'Extension')}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Copy extension"
+                  >
+                    <Copy className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-blue-800">
+                      <p className="font-semibold mb-1">📱 How to use:</p>
+                      <ol className="list-decimal list-inside space-y-1 ml-2">
+                        <li>Copy your SIP username and extension above</li>
+                        <li>Your SIP password is your login password</li>
+                        <li>Register your WebRTC phone with these credentials</li>
+                        <li>Start receiving calls!</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* System Requirements */}
       <motion.div

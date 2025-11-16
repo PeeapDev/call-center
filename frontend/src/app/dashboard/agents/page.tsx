@@ -6,87 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Users, Phone, Clock, TrendingUp, PhoneCall, PhoneOff, CheckCircle, XCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Script from 'next/script';
+import { API_ENDPOINTS } from '@/lib/config';
 
-const mockAgents = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    email: 'sarah.johnson@education.gov',
-    status: 'on-call',
-    currentCall: '+232 76 123 456',
-    callDuration: '2:34',
-    callsToday: 12,
-    avgCallTime: '4:23',
-    extension: '1001',
-    sipUsername: 'agent001',
-    sipPassword: 'secure_password_001',
-  },
-  {
-    id: '2',
-    name: 'Michael Chen',
-    email: 'michael.chen@education.gov',
-    status: 'on-call',
-    currentCall: '+232 77 987 654',
-    callDuration: '1:45',
-    callsToday: 9,
-    avgCallTime: '3:56',
-    extension: '1002',
-    sipUsername: 'agent002',
-    sipPassword: 'secure_password_002',
-  },
-  {
-    id: '3',
-    name: 'Emily Rodriguez',
-    email: 'emily.rodriguez@education.gov',
-    status: 'available',
-    currentCall: null,
-    callDuration: null,
-    callsToday: 11,
-    avgCallTime: '5:12',
-    extension: '1003',
-    sipUsername: 'agent003',
-    sipPassword: 'secure_password_003',
-  },
-  {
-    id: '4',
-    name: 'David Kim',
-    email: 'david.kim@education.gov',
-    status: 'break',
-    currentCall: null,
-    callDuration: null,
-    callsToday: 8,
-    avgCallTime: '4:45',
-    extension: '1004',
-    sipUsername: 'agent004',
-    sipPassword: 'secure_password_004',
-  },
-  {
-    id: '5',
-    name: 'Lisa Thompson',
-    email: 'lisa.thompson@education.gov',
-    status: 'offline',
-    currentCall: null,
-    callDuration: null,
-    callsToday: 0,
-    avgCallTime: 'N/A',
-    extension: '1005',
-    sipUsername: 'agent005',
-    sipPassword: 'secure_password_005',
-  },
-  {
-    id: '6',
-    name: 'James Wilson',
-    email: 'james.wilson@education.gov',
-    status: 'available',
-    currentCall: null,
-    callDuration: null,
-    callsToday: 7,
-    avgCallTime: '3:34',
-    extension: '1006',
-    sipUsername: 'agent006',
-    sipPassword: 'secure_password_006',
-  },
-];
+interface Agent {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  accountType: string;
+  sipUsername?: string;
+  sipPassword?: string;
+  sipExtension?: string;
+  status?: string;
+  currentCall?: string;
+  callDuration?: string;
+  callsToday?: number;
+  avgCallTime?: string;
+}
 
 interface WebRTCAgent {
   agentId: string;
@@ -96,16 +31,36 @@ interface WebRTCAgent {
 }
 
 export default function AgentsPage() {
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [webrtcAgents, setWebrtcAgents] = useState<Map<string, WebRTCAgent>>(new Map());
   const [jssipLoaded, setJssipLoaded] = useState(false);
   const [wsServer, setWsServer] = useState('ws://192.168.1.17:8088/ws');
 
-  const onlineAgents = mockAgents.filter((a) => a.status !== 'offline');
-  const onCallAgents = mockAgents.filter((a) => a.status === 'on-call');
-  const availableAgents = mockAgents.filter((a) => a.status === 'available');
+  useEffect(() => {
+    fetchAgents();
+  }, []);
+
+  const fetchAgents = async () => {
+    try {
+      const response = await fetch(`${API_ENDPOINTS.hrUsers}?accountType=agent`);
+      const data = await response.json();
+      if (data.status === 'ok') {
+        setAgents(data.users || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch agents:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onlineAgents = agents.filter((a) => a.status !== 'offline');
+  const onCallAgents = agents.filter((a) => a.status === 'on-call');
+  const availableAgents = agents.filter((a) => a.status === 'available');
   const webrtcRegisteredCount = Array.from(webrtcAgents.values()).filter(a => a.isRegistered).length;
 
-  const registerAgent = async (agent: typeof mockAgents[0]) => {
+  const registerAgent = async (agent: Agent) => {
     if (!jssipLoaded) {
       alert('JsSIP library is still loading. Please wait...');
       return;
@@ -233,7 +188,7 @@ export default function AgentsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockAgents.length}</div>
+            <div className="text-2xl font-bold">{agents.length}</div>
             <p className="text-xs text-muted-foreground">
               {onlineAgents.length} online
             </p>
@@ -326,7 +281,16 @@ export default function AgentsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {mockAgents.map((agent) => {
+            {loading ? (
+              <div className="text-center py-12 text-gray-500">Loading agents...</div>
+            ) : agents.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                <p className="text-gray-500 mb-2">No agents found</p>
+                <p className="text-sm text-gray-400">Add agents in the HR Management page</p>
+              </div>
+            ) : (
+              agents.map((agent) => {
               const isRegistered = isAgentRegistered(agent.id);
               return (
                 <div
@@ -368,9 +332,9 @@ export default function AgentsPage() {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">{agent.email}</p>
+                      <p className="text-sm text-gray-500 mt-1">{agent.phoneNumber}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        SIP: {agent.sipUsername} • Ext: {agent.extension}
+                        SIP: {agent.sipUsername || 'Not configured'} • Ext: {agent.sipExtension || 'N/A'}
                       </p>
                       {agent.currentCall && (
                         <p className="text-sm text-green-600 font-medium mt-1">
@@ -382,13 +346,13 @@ export default function AgentsPage() {
                   <div className="flex items-center gap-4">
                     <div className="text-center">
                       <p className="text-2xl font-bold text-gray-900">
-                        {agent.callsToday}
+                        {agent.callsToday || 0}
                       </p>
                       <p className="text-xs text-gray-500">Calls today</p>
                     </div>
                     <div className="text-center">
                       <p className="text-lg font-semibold text-gray-900">
-                        {agent.avgCallTime}
+                        {agent.avgCallTime || 'N/A'}
                       </p>
                       <p className="text-xs text-gray-500">Avg duration</p>
                     </div>
@@ -416,7 +380,8 @@ export default function AgentsPage() {
                   </div>
                 </div>
               );
-            })}
+              })
+            )}
           </div>
         </CardContent>
       </Card>

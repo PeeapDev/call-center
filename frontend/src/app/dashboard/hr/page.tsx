@@ -8,7 +8,6 @@ import {
   Users, UserPlus, Edit, Trash2, Search, Phone, Key, RefreshCw,
   CheckCircle, XCircle, Copy, Eye, EyeOff
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { API_ENDPOINTS, buildApiUrl } from '@/lib/config';
 
 interface User {
@@ -51,6 +50,10 @@ export default function HREnhancedPage() {
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    console.log('showAddModal state changed:', showAddModal);
+  }, [showAddModal]);
+
   const fetchUsers = async () => {
     try {
       const response = await fetch(API_ENDPOINTS.hrUsers);
@@ -66,39 +69,38 @@ export default function HREnhancedPage() {
   };
 
   const handleCreateUser = async () => {
+    console.log('handleCreateUser called');
+    console.log('Form data:', formData);
+    
     if (!formData.name || !formData.phoneNumber || !formData.password) {
       alert('Please fill in all required fields');
       return;
     }
 
     try {
+      console.log('Sending request to:', API_ENDPOINTS.hrUsers);
       const response = await fetch(API_ENDPOINTS.hrUsers, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
+      console.log('Response status:', response.status);
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (data.status === 'ok') {
-        // Show SIP credentials if generated
-        if (data.user.sipUsername) {
-          setSIPCredentials({
-            username: data.user.sipUsername,
-            password: data.user.sipPassword,
-            extension: data.user.sipExtension,
-          });
-          setShowSIPModal(true);
-        }
-
-        alert(data.message);
         setShowAddModal(false);
         resetForm();
+        
+        // Don't show SIP modal - agent can view credentials on their dashboard anytime
+        alert(`✓ ${data.user.name} created successfully!\n\nAgent can view their WebRTC credentials on their dashboard.`);
         fetchUsers();
       } else {
         alert(`Error: ${data.message}`);
       }
     } catch (error) {
+      console.error('API call failed:', error);
       alert('Failed to create user');
     }
   };
@@ -185,13 +187,31 @@ export default function HREnhancedPage() {
             Manage agents and their WebRTC/SIP credentials
           </p>
         </div>
-        <Button
-          onClick={() => setShowAddModal(true)}
-          className="bg-gradient-to-r from-blue-600 to-purple-600"
+        <button
+          type="button"
+          onClick={() => {
+            console.log('NEW Add Agent button clicked!');
+            setShowAddModal(true);
+          }}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#3B82F6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2563EB'}
+          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#3B82F6'}
         >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Add Agent
-        </Button>
+          <UserPlus className="w-4 h-4" />
+          Add New Agent
+        </button>
       </div>
 
       {/* Stats */}
@@ -391,15 +411,30 @@ export default function HREnhancedPage() {
       </Card>
 
       {/* Add User Modal */}
-      <AnimatePresence>
-        {showAddModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-lg shadow-2xl w-full max-w-2xl"
-            >
+      {showAddModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center p-4"
+          style={{ 
+            zIndex: 99999, 
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              console.log('Modal backdrop clicked');
+              setShowAddModal(false);
+              resetForm();
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
               <Card className="border-0">
                 <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-purple-50">
                   <CardTitle>Add New User/Agent</CardTitle>
@@ -475,41 +510,70 @@ export default function HREnhancedPage() {
                   )}
 
                   <div className="flex gap-3 pt-4">
-                    <Button
-                      onClick={handleCreateUser}
-                      className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600"
-                    >
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Create User
-                    </Button>
-                    <Button
+                    <button
+                      type="button"
                       onClick={() => {
+                        console.log('Create User button clicked!');
+                        handleCreateUser();
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '12px 24px',
+                        backgroundColor: '#10B981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#059669'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#10B981'}
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Create User
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        console.log('Cancel button clicked');
                         setShowAddModal(false);
                         resetForm();
                       }}
-                      variant="outline"
-                      className="flex-1"
+                      style={{
+                        flex: 1,
+                        padding: '12px 24px',
+                        backgroundColor: 'white',
+                        color: '#374151',
+                        border: '1px solid #D1D5DB',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '600'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F3F4F6'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
                     >
                       Cancel
-                    </Button>
+                    </button>
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
 
       {/* SIP Credentials Modal */}
-      <AnimatePresence>
-        {showSIPModal && sipCredentials && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-lg shadow-2xl w-full max-w-2xl"
-            >
+      {showSIPModal && sipCredentials && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4"
+          style={{ zIndex: 9999 }}
+        >
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <Card className="border-0">
                 <CardHeader className="border-b bg-gradient-to-r from-green-50 to-emerald-50">
                   <CardTitle className="flex items-center gap-2">
@@ -520,7 +584,9 @@ export default function HREnhancedPage() {
                 <CardContent className="p-6 space-y-4">
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <p className="text-sm text-yellow-800 font-medium">
-                      ⚠️ <strong>IMPORTANT:</strong> Save these credentials now! They will not be shown again.
+                      ⚠️ <strong>SAVE THESE NOW!</strong> This is the only time you'll see the password.
+                      <br />
+                      Give these credentials to the agent so they can register their WebRTC phone.
                     </p>
                   </div>
 
@@ -593,22 +659,35 @@ export default function HREnhancedPage() {
                     </p>
                   </div>
 
-                  <Button
+                  <button
+                    type="button"
                     onClick={() => {
                       setShowSIPModal(false);
                       setSIPCredentials(null);
                       setShowPassword(false);
+                      fetchUsers(); // Refresh the user list
                     }}
-                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600"
+                    style={{
+                      width: '100%',
+                      padding: '12px 24px',
+                      backgroundColor: '#10B981',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#059669'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#10B981'}
                   >
-                    I've Saved the Credentials
-                  </Button>
+                    ✓ I've Saved the Credentials - Close
+                  </button>
                 </CardContent>
               </Card>
-            </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }

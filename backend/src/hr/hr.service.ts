@@ -33,13 +33,16 @@ export class HrService {
     }
   }
 
-  private generateSIPCredentials(name: string) {
-    const username = name.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
-    const password = crypto.randomBytes(16).toString('hex');
+  private generateSIPCredentials(name: string, phoneNumber: string, userPassword: string) {
+    // Create a clean username from name (remove spaces, special chars, make lowercase)
+    const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    // Use last 4 digits of phone as suffix for uniqueness
+    const phoneSuffix = phoneNumber.replace(/[^0-9]/g, '').slice(-4);
+    const username = `${cleanName}${phoneSuffix}`;
 
     return {
       sipUsername: username,
-      sipPassword: password,
+      sipPassword: userPassword, // Use the same password as their login
     };
   }
 
@@ -62,11 +65,11 @@ export class HrService {
     try {
       const hashedPassword = await bcrypt.hash(userData.password, 10);
 
-      // Generate SIP credentials for agents
+      // Generate SIP credentials for agents (use plain password for SIP, hash only for login)
       let sipCreds = null;
       let sipExtension = null;
       if (userData.accountType === 'agent' || userData.accountType === 'supervisor' || userData.accountType === 'admin') {
-        sipCreds = this.generateSIPCredentials(userData.name);
+        sipCreds = this.generateSIPCredentials(userData.name, userData.phoneNumber, userData.password);
         sipExtension = await this.generateExtension();
       }
 
@@ -112,6 +115,11 @@ export class HrService {
 
     if (userData.password) {
       user.password = await bcrypt.hash(userData.password, 10);
+      
+      // Also update SIP password if user has SIP credentials (agent/supervisor/admin)
+      if (user.sipUsername && (user.accountType === 'agent' || user.accountType === 'supervisor' || user.accountType === 'admin')) {
+        user.sipPassword = userData.password; // Keep SIP password in sync with login password
+      }
     }
 
     await this.userRepository.save(user);
@@ -171,7 +179,9 @@ export class HrService {
       throw new Error('User not found');
     }
 
-    const sipCreds = this.generateSIPCredentials(user.name);
+    // When regenerating, create a new random password since we can't retrieve the original
+    const newSipPassword = crypto.randomBytes(8).toString('hex'); // 16 char password
+    const sipCreds = this.generateSIPCredentials(user.name, user.phoneNumber, newSipPassword);
     const extension = await this.generateExtension();
 
     user.sipUsername = sipCreds.sipUsername;

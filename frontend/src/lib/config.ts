@@ -12,8 +12,8 @@
 // Example: export const BACKEND_URL = 'https://abc123.ngrok.io';
 // export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
-// 🌐 NGROK URL - Active tunnel running!
-export const BACKEND_URL = 'https://rhett-yearlong-gregory.ngrok-free.dev';
+// 🌐 Local development - Backend running on localhost
+export const BACKEND_URL = 'http://localhost:3001';
 
 // WebSocket URL (for WebRTC)
 export const WS_URL = BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://');
