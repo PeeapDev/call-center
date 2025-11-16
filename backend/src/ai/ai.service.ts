@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import Database from 'better-sqlite3';
 
 interface AIKey {
   name: string;
@@ -22,6 +23,7 @@ interface TrainingDocument {
 
 @Injectable()
 export class AiService {
+  private db: Database.Database;
   private readonly aiKeys: AIKey[] = [
     {
       name: 'GEMINI_API_KEY',
@@ -57,10 +59,25 @@ export class AiService {
   private readonly uploadsDir = path.join(process.cwd(), 'uploads', 'ai-training');
 
   constructor() {
+    const dbPath = path.join(__dirname, '../../callcenter.db');
+    this.db = new Database(dbPath);
+    this.initDatabase();
     // Ensure uploads directory exists
     this.initUploadsDir();
     // Load existing documents
     this.loadDocuments();
+  }
+
+  private initDatabase() {
+    // Create table for AI keys
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS ai_keys (
+        name TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
   }
 
   private async initUploadsDir() {
@@ -92,7 +109,11 @@ export class AiService {
   }
 
   async chat(message: string) {
-    const geminiKey = process.env.GEMINI_API_KEY;
+    // Try to get key from database first, then fall back to environment variable
+    let geminiKey = this.getStoredKey('GEMINI_API_KEY');
+    if (!geminiKey) {
+      geminiKey = process.env.GEMINI_API_KEY || null;
+    }
 
     if (!geminiKey) {
       return {
@@ -163,12 +184,26 @@ export class AiService {
     }
   }
 
+  private getStoredKey(keyName: string): string | null {
+    try {
+      const stmt = this.db.prepare('SELECT value FROM ai_keys WHERE name = ?');
+      const result = stmt.get(keyName) as { value: string } | undefined;
+      return result?.value || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   async getKeys() {
     const keys = this.aiKeys.map((key) => {
+      // Check database first, then environment
+      const storedValue = this.getStoredKey(key.name);
       const envValue = process.env[key.envVar];
-      const isConfigured = !!envValue && envValue.length > 0;
+      const actualValue = storedValue || envValue;
+      
+      const isConfigured = !!actualValue && actualValue.length > 0;
       const masked = isConfigured
-        ? `${envValue.substring(0, 4)}${'•'.repeat(12)}${envValue.substring(envValue.length - 4)}`
+        ? `${actualValue.substring(0, 4)}${'•'.repeat(12)}${actualValue.substring(actualValue.length - 4)}`
         : '';
 
       return {
@@ -196,13 +231,31 @@ export class AiService {
       };
     }
 
-    // In production: encrypt and store in secrets manager
-    console.log(`Would update ${keyName} to: ${value.substring(0, 4)}...`);
+    try {
+      const now = new Date().toISOString();
+      const stmt = this.db.prepare(`
+        INSERT INTO ai_keys (name, value, created_at, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(name) DO UPDATE SET
+          value = excluded.value,
+          updated_at = excluded.updated_at
+      `);
+      
+      stmt.run(keyName, value, now, now);
 
-    return {
-      status: 'ok',
-      message: `${keyName} updated successfully. Note: In production, restart backend to apply changes.`,
-    };
+      console.log(`✅ Saved ${keyName} to database: ${value.substring(0, 4)}...`);
+
+      return {
+        status: 'ok',
+        message: `${keyName} saved successfully! AI chat is now ready to use.`,
+      };
+    } catch (error) {
+      console.error('Failed to save API key:', error);
+      return {
+        status: 'error',
+        message: 'Failed to save API key to database',
+      };
+    }
   }
 
   // Document Management

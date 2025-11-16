@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { initializeDefaultTemplates } from '@/lib/defaultFlowTemplates';
+import { FlowNodeConfig } from '@/components/FlowNodeConfig';
 
 const nodeTypes = [
   { type: 'start', label: 'Start Call', icon: Phone, color: 'bg-green-500' },
@@ -81,6 +82,7 @@ export default function CallFlowBuilderPage() {
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
   const [flowName, setFlowName] = useState('Ministry Call Flow');
   const [savedFlows, setSavedFlows] = useState<any[]>([]);
+  const [configNode, setConfigNode] = useState<Node | null>(null);
 
   useEffect(() => {
     // Initialize default templates and load saved flows
@@ -102,6 +104,20 @@ export default function CallFlowBuilderPage() {
       ),
     [setEdges]
   );
+
+  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    setConfigNode(node);
+  }, []);
+
+  const handleNodeUpdate = useCallback((nodeId: string, data: any) => {
+    setNodes((nds) =>
+      nds.map((node) =>
+        node.id === nodeId
+          ? { ...node, data: { ...node.data, ...data } }
+          : node
+      )
+    );
+  }, [setNodes]);
 
   const addNode = (type: string, label: string, color: string) => {
     const colorMap: Record<string, string> = {
@@ -326,7 +342,9 @@ export default function CallFlowBuilderPage() {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
+                onNodeClick={onNodeClick}
                 fitView
+                className="bg-gray-50 rounded-lg"
               >
                 <Controls />
                 <MiniMap
@@ -429,6 +447,15 @@ export default function CallFlowBuilderPage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Node Configuration Panel */}
+      {configNode && (
+        <FlowNodeConfig
+          node={configNode}
+          onClose={() => setConfigNode(null)}
+          onUpdate={handleNodeUpdate}
+        />
+      )}
     </div>
   );
 }
