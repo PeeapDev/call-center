@@ -11,6 +11,7 @@ services:
       - ./asterisk-config/manager.conf:/etc/asterisk/manager.conf
       - ./asterisk-config/pjsip.conf:/etc/asterisk/pjsip.conf
       - ./asterisk-config/extensions.conf:/etc/asterisk/extensions.conf
+      - ./asterisk-recordings:/var/spool/asterisk/monitor  # Call recordings
     environment:
       - TZ=UTC
     restart: unless-stopped
