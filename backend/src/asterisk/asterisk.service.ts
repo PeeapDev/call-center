@@ -12,11 +12,11 @@ export class AsteriskService implements OnModuleInit {
 
   async onModuleInit() {
     // Asterisk connection - configure when ready
-    this.logger.log('Asterisk service initialized - configure ARI connection in environment variables');
-    // Uncomment when Asterisk is configured:
-    // this.connectARI().catch((err) => {
-    //   this.logger.error(`Asterisk connection failed during init: ${err.message}`);
-    // });
+    this.logger.log('Asterisk service initialized - attempting ARI connection...');
+    // Enable Asterisk connection
+    this.connectARI().catch((err) => {
+      this.logger.error(`Asterisk connection failed during init: ${err.message}`);
+    });
   }
 
   private async connectARI() {

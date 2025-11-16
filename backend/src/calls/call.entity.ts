@@ -3,6 +3,7 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateCol
 export enum CallStatus {
   INITIATED = 'initiated',
   RINGING = 'ringing',
+  IN_PROGRESS = 'in_progress',
   CONNECTED = 'connected',
   IN_QUEUE = 'in_queue',
   ENDED = 'ended',

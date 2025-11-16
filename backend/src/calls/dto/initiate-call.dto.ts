@@ -21,8 +21,9 @@ export class InitiateCallDto {
 }
 
 export class CallResponseDto {
-  success: boolean;
+  success?: boolean;
   callId?: string;
+  status?: string;
   assignedAgent?: {
     id: string;
     name: string;
