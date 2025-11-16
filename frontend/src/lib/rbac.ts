@@ -74,7 +74,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canEditContent: false,
     canViewSettings: false,
     canEditSettings: false,
-    canViewWebRTC: true,
+    canViewWebRTC: false, // Only admin sees WebRTC admin config
     canViewHR: true,
     canManageHR: false,
     canViewAIConfig: true,
@@ -101,7 +101,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canEditContent: false,
     canViewSettings: false,
     canEditSettings: false,
-    canViewWebRTC: true,
+    canViewWebRTC: false, // Agents access their credentials on a different page
     canViewHR: false,
     canManageHR: false,
     canViewAIConfig: false,
@@ -210,8 +210,9 @@ export function getNavigationItems(role: UserRole | undefined) {
   if (role === 'agent' as UserRole) {
     // Agents see simplified navigation
     items.push(
+      { href: '/dashboard/agent', label: 'My Dashboard', icon: 'Home' },
       { href: '/dashboard/my-calls', label: 'My Calls', icon: 'PhoneCall' },
-      { href: '/dashboard/webrtc-setup', label: 'Phone Setup', icon: 'Settings' },
+      { href: '/dashboard/chat', label: 'Chat Support', icon: 'MessageSquare' },
     );
   } else if (role === 'citizen' as UserRole) {
     // Citizens see their own simple navigation
@@ -278,7 +279,7 @@ export function getNavigationItems(role: UserRole | undefined) {
       items.push({ href: '/dashboard/settings', label: 'Settings', icon: 'Settings' });
     }
 
-    if (permissions.canViewWebRTC && role !== 'agent') {
+    if (permissions.canViewWebRTC) {
       items.push({ href: '/dashboard/webrtc-setup', label: 'WebRTC Setup', icon: 'Globe' });
     }
   }

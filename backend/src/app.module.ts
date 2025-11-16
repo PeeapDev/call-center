@@ -14,6 +14,7 @@ import { AiModule } from './ai/ai.module';
 import { HrModule } from './hr/hr.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MediaModule } from './media/media.module';
+import { AnnouncementsModule } from './announcements/announcements.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { MediaModule } from './media/media.module';
     HrModule,
     NotificationsModule,
     MediaModule,
+    AnnouncementsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

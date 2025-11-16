@@ -2,17 +2,54 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Clock, CheckCircle, TrendingUp } from 'lucide-react';
+import { Phone, Clock, CheckCircle, TrendingUp, Key, User, Lock, Copy, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import AgentCallInterface from '@/components/AgentCallInterface';
+// import AgentCallInterface from '@/components/AgentCallInterface'; // Removed - will use real call interface
+import { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/lib/config';
 
 export default function AgentDashboardPage() {
-  // Mock agent stats
-  const agentStats = {
-    callsToday: 12,
-    avgDuration: '4:32',
-    completionRate: 94,
-    customerSatisfaction: 4.7,
+  const [myCredentials, setMyCredentials] = useState<any>(null);
+  const [loadingCredentials, setLoadingCredentials] = useState(true);
+  const [agentStats, setAgentStats] = useState({
+    callsToday: 0,
+    avgDuration: '0:00',
+    completionRate: 0,
+    customerSatisfaction: 0,
+  });
+
+  useEffect(() => {
+    fetchMyCredentials();
+  }, []);
+
+  const fetchMyCredentials = async () => {
+    try {
+      // Get current user from session storage or local storage
+      const userPhone = localStorage.getItem('userPhone');
+      if (!userPhone) {
+        setLoadingCredentials(false);
+        return;
+      }
+
+      const response = await fetch(`${API_ENDPOINTS.hrUsers}`);
+      const data = await response.json();
+      
+      if (data.status === 'ok') {
+        const currentUser = data.users.find((u: any) => u.phoneNumber === userPhone);
+        if (currentUser && currentUser.sipUsername) {
+          setMyCredentials(currentUser);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch credentials:', error);
+    } finally {
+      setLoadingCredentials(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    alert(`${label} copied to clipboard!`);
   };
 
   return (
@@ -27,6 +64,72 @@ export default function AgentDashboardPage() {
           Welcome back! Ready to help citizens today.
         </p>
       </motion.div>
+
+      {/* My WebRTC Credentials */}
+      {myCredentials && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.05 }}
+        >
+          <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-indigo-50">
+            <CardHeader className="border-b bg-gradient-to-r from-purple-100 to-indigo-100">
+              <CardTitle className="flex items-center gap-2">
+                <Key className="w-6 h-6 text-purple-600" />
+                My WebRTC Phone Credentials
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex items-center justify-between p-4 bg-white rounded-lg border-2 border-purple-100">
+                  <div className="flex items-center gap-3">
+                    <User className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Username</p>
+                      <p className="text-sm font-mono font-bold text-gray-900">{myCredentials.sipUsername}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(myCredentials.sipUsername, 'Username')}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Copy username"
+                  >
+                    <Copy className="w-4 h-4 text-gray-600" />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-white rounded-lg border-2 border-purple-100">
+                  <div className="flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Password</p>
+                      <p className="text-xs text-gray-700">Same as login</p>
+                    </div>
+                  </div>
+                  <Badge className="bg-blue-500">Login</Badge>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-white rounded-lg border-2 border-purple-100">
+                  <div className="flex items-center gap-3">
+                    <Phone className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Extension</p>
+                      <p className="text-sm font-mono font-bold text-gray-900">{myCredentials.sipExtension}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(myCredentials.sipExtension, 'Extension')}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Copy extension"
+                  >
+                    <Copy className="w-4 h-4 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Agent Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -86,15 +189,6 @@ export default function AgentDashboardPage() {
           </Card>
         </motion.div>
       </div>
-
-      {/* Call Interface */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-      >
-        <AgentCallInterface />
-      </motion.div>
 
       {/* Quick Tips */}
       <motion.div

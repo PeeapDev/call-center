@@ -7,6 +7,7 @@ import { Users, Phone, Clock, TrendingUp, PhoneCall, PhoneOff, CheckCircle, XCir
 import { useState, useEffect } from 'react';
 import Script from 'next/script';
 import { API_ENDPOINTS } from '@/lib/config';
+import { useSession } from 'next-auth/react';
 
 interface Agent {
   id: string;
@@ -31,11 +32,16 @@ interface WebRTCAgent {
 }
 
 export default function AgentsPage() {
+  const { data: session } = useSession();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [webrtcAgents, setWebrtcAgents] = useState<Map<string, WebRTCAgent>>(new Map());
   const [jssipLoaded, setJssipLoaded] = useState(false);
   const [wsServer, setWsServer] = useState('ws://192.168.1.17:8088/ws');
+  
+  const user = session?.user as any;
+  const userRole = user?.role;
+  const canRegisterWebRTC = userRole === 'admin' || userRole === 'supervisor' || userRole === 'agent';
 
   useEffect(() => {
     fetchAgents();
@@ -356,26 +362,30 @@ export default function AgentsPage() {
                       </p>
                       <p className="text-xs text-gray-500">Avg duration</p>
                     </div>
-                    {isRegistered ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => unregisterAgent(agent.id)}
-                        className="border-red-300 text-red-600 hover:bg-red-50"
-                      >
-                        <PhoneOff className="w-4 h-4 mr-2" />
-                        Unregister
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => registerAgent(agent)}
-                        className="bg-purple-600 hover:bg-purple-700"
-                      >
-                        <PhoneCall className="w-4 h-4 mr-2" />
-                        Register WebRTC
-                      </Button>
+                    {canRegisterWebRTC && (
+                      <>
+                        {isRegistered ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => unregisterAgent(agent.id)}
+                            className="border-red-300 text-red-600 hover:bg-red-50"
+                          >
+                            <PhoneOff className="w-4 h-4 mr-2" />
+                            Unregister
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => registerAgent(agent)}
+                            className="bg-purple-600 hover:bg-purple-700"
+                          >
+                            <PhoneCall className="w-4 h-4 mr-2" />
+                            Register WebRTC
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

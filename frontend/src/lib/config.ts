@@ -49,6 +49,9 @@ export const API_ENDPOINTS = {
   // Media / IVR audio
   media: `${BACKEND_URL}/media`,
   mediaUpload: `${BACKEND_URL}/media/upload`,
+  
+  // Announcements
+  announcements: `${BACKEND_URL}/announcements`,
 };
 
 // Helper function to build URLs
