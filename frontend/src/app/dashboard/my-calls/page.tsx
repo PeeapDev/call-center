@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import AgentCallInterface from '@/components/AgentCallInterface';
 import RealTimeCallNotifications from '@/components/RealTimeCallNotifications';
 import { API_ENDPOINTS } from '@/lib/config';
 
@@ -173,9 +172,6 @@ export default function MyCallsPage() {
         >
           {/* Real-Time Call Notifications with WebRTC */}
           <RealTimeCallNotifications />
-          
-          {/* Regular Call Interface */}
-          <AgentCallInterface />
         </motion.div>
       )}
 
