@@ -8,6 +8,7 @@ import { Phone, PhoneIncoming, PhoneOff, Mic, MicOff, Volume2 } from 'lucide-rea
 import { motion, AnimatePresence } from 'framer-motion';
 import { io, Socket } from 'socket.io-client';
 import { WebRTCClient } from '@/lib/webrtc-client';
+import { API_ENDPOINTS } from '@/lib/config';
 
 interface IncomingCall {
   callId: string;
@@ -48,9 +49,9 @@ export default function RealTimeCallNotifications() {
 
       // Register as agent
       socketInstance.emit('agent:register', {
-        agentId: 'agent_dashboard_' + Date.now(),
-        agentName: 'Dashboard Agent',
-        extension: '2000',
+        agentId: 'agent_webrtc_1001',
+        agentName: 'WebRTC Agent 1001',
+        extension: '1001',
       });
     });
 
@@ -114,53 +115,98 @@ export default function RealTimeCallNotifications() {
     };
   }, [activeCall]);
 
+  // Auto-answer incoming SIP calls from Asterisk once WebRTC client is registered
+  useEffect(() => {
+    if (!webrtcClient) return;
+
+    const handleIncomingCall = (event: any) => {
+      try {
+        console.log('🎧 Incoming SIP call for agent:', event.detail);
+        webrtcClient.answerCall();
+      } catch (err) {
+        console.error('Failed to auto-answer SIP call:', err);
+      }
+    };
+
+    window.addEventListener('incoming-call', handleIncomingCall as any);
+    return () => {
+      window.removeEventListener('incoming-call', handleIncomingCall as any);
+    };
+  }, [webrtcClient]);
+
   const playNotificationSound = () => {
-    // Create a simple beep sound
+    // Create a loud ring pattern to alert agents
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
     
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
-    gainNode.gain.value = 0.3;
-    
-    oscillator.start();
-    oscillator.stop(audioContext.currentTime + 0.3);
+    // Play 3 beeps with increasing volume
+    for (let i = 0; i < 3; i++) {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 880; // Higher pitch for attention
+      oscillator.type = 'sine';
+      
+      const startTime = audioContext.currentTime + (i * 0.5);
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.6, startTime + 0.05);
+      gainNode.gain.linearRampToValueAtTime(0, startTime + 0.3);
+      
+      oscillator.start(startTime);
+      oscillator.stop(startTime + 0.3);
+    }
   };
 
   const answerCall = async (call: IncomingCall) => {
     try {
       console.log('📞 Answering call:', call.callId);
+      const agentExtension = '1001';
+      const agentName = 'WebRTC Agent 1001';
 
-      // Notify backend that agent accepted the call
-      if (socket) {
-        const response = await new Promise((resolve) => {
-          socket.emit('call:accept', { callId: call.callId }, resolve);
-        });
-        console.log('Backend response:', response);
-      }
-
-      // Initialize WebRTC if not already done
-      if (!webrtcClient) {
-        const client = new WebRTCClient({
-          wsServer: 'wss://localhost:8089/ws', // Asterisk WebSocket
-          sipUri: 'sip:2000@localhost',
-          password: 'agent_password',
-          displayName: 'Dashboard Agent',
+      // Ensure WebRTC client is registered with Asterisk for this agent extension
+      let client = webrtcClient;
+      if (!client) {
+        client = new WebRTCClient({
+          wsServer: 'ws://localhost:8088/ws', // Asterisk WebSocket (ws)
+          sipUri: `sip:${agentExtension}@localhost`,
+          password: 'password1001',
+          displayName: agentName,
         });
 
         try {
           await client.register();
           setWebrtcClient(client);
-          console.log('✅ WebRTC client registered');
+          console.log('✅ WebRTC client registered for', agentExtension);
         } catch (error) {
           console.error('❌ WebRTC registration failed:', error);
           alert('WebRTC connection failed. Make sure Asterisk is running.');
           return;
         }
+      }
+
+      // Tell backend to claim and bridge this call to the agent's PJSIP endpoint
+      try {
+        const claimResponse = await fetch(`${API_ENDPOINTS.calls}/${call.callId}/claim`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentName,
+            agentExtension,
+          }),
+        });
+        const claimData = await claimResponse.json();
+        console.log('Claim response:', claimData);
+      } catch (err) {
+        console.error('Failed to claim/bridge call:', err);
+      }
+
+      // Also notify gateway via WebSocket so other agents see that the call was taken
+      if (socket) {
+        socket.emit('call:accept', { callId: call.callId }, (response: any) => {
+          console.log('Gateway accept response:', response);
+        });
       }
 
       // Remove from incoming list
@@ -175,13 +221,6 @@ export default function RealTimeCallNotifications() {
         isMuted: false,
         isOnHold: false,
       });
-
-      // In a real implementation, you would:
-      // 1. Establish WebRTC connection with the mobile user
-      // 2. Or bridge the call through Asterisk
-      // For now, we simulate the connection
-      
-      alert(`Call connected with ${call.callerName}!\n\nWebRTC connection would be established here.`);
 
     } catch (error) {
       console.error('Failed to answer call:', error);

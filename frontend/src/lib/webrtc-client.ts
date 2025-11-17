@@ -11,6 +11,8 @@ export interface CallOptions {
   onConnected?: () => void;
   onEnded?: () => void;
   onFailed?: (cause: string) => void;
+  // Optional extra SIP headers (e.g. to pass backend call IDs)
+  extraHeaders?: string[];
 }
 
 export interface WebRTCConfig {
@@ -121,7 +123,7 @@ export class WebRTCClient {
       throw new Error('Microphone access denied');
     }
 
-    const callOptions = {
+    const callOptions: any = {
       mediaConstraints: {
         audio: true,
         video: false,
@@ -129,6 +131,7 @@ export class WebRTCClient {
       pcConfig: {
         iceServers: this.getIceServers(),
       },
+      extraHeaders: options.extraHeaders || [],
     };
 
     // Dial the extension

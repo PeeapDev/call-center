@@ -8,6 +8,7 @@ import { Phone, PhoneCall, Delete, PhoneOff, Volume2, Mic, MicOff, Clock } from 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import { buildApiUrl } from '@/lib/config';
+import { WebRTCClient } from '@/lib/webrtc-client';
 
 export default function CallDialerPage() {
   const { data: session } = useSession();
@@ -18,6 +19,8 @@ export default function CallDialerPage() {
   const [callStatus, setCallStatus] = useState<'idle' | 'dialing' | 'connected' | 'ended'>('idle');
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
+  const [webrtcClient, setWebrtcClient] = useState<WebRTCClient | null>(null);
+  const [isWebrtcRegistering, setIsWebrtcRegistering] = useState(false);
 
   const quickDial = [
     { number: '117', label: 'Ministry Hotline', icon: '📞' },
@@ -50,7 +53,7 @@ export default function CallDialerPage() {
 
     try {
       const user = session?.user as any;
-      // Use a default IVR option; the real IVR flow and audio run in Asterisk/Flow Builder
+      // Use a default IVR option; the real IVR flow and audio run in Asterisk
       const res = await fetch(buildApiUrl('/calls/initiate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,15 +68,70 @@ export default function CallDialerPage() {
 
       if (data.callId) {
         setQueueMessage(
-          data.message || 'Call initiated. Please listen to the IVR instructions on your phone.',
+          data.message || 'Call initiated. Establishing audio connection...',
         );
         setQueuePosition(data.queuePosition || null);
-        setCallStatus('connected');
 
-        const interval = setInterval(() => {
-          setCallDuration((prev) => prev + 1);
-        }, 1000);
-        (window as any).callInterval = interval;
+        // Ensure we have a registered WebRTC client for the citizen side
+        const callerExtension = '1002';
+        const callerName = user?.name || 'WebRTC Caller';
+        let client = webrtcClient;
+
+        if (!client) {
+          try {
+            setIsWebrtcRegistering(true);
+            client = new WebRTCClient({
+              wsServer: 'ws://localhost:8088/ws',
+              sipUri: `sip:${callerExtension}@localhost`,
+              password: 'password1002',
+              displayName: callerName,
+            });
+
+            await client.register();
+            setWebrtcClient(client);
+            console.log('✅ Citizen WebRTC client registered for', callerExtension);
+          } catch (err) {
+            console.error('❌ WebRTC registration failed (citizen):', err);
+            setQueueMessage('WebRTC registration failed. Make sure Asterisk is running.');
+            setCallStatus('ended');
+            setIsCallActive(false);
+            setIsWebrtcRegistering(false);
+            return;
+          } finally {
+            setIsWebrtcRegistering(false);
+          }
+        }
+
+        // Start a real SIP call to extension 117 over WebRTC so the citizen hears IVR
+        try {
+          await client!.makeCall('117', {
+            onConnecting: () => {
+              console.log('📞 WebRTC call connecting to 117...');
+            },
+            onConnected: () => {
+              console.log('✅ WebRTC call connected to 117');
+              setCallStatus('connected');
+
+              const interval = setInterval(() => {
+                setCallDuration((prev) => prev + 1);
+              }, 1000);
+              (window as any).callInterval = interval;
+            },
+            onEnded: () => {
+              console.log('📴 WebRTC call to 117 ended');
+              setCallStatus('ended');
+            },
+            onFailed: (cause) => {
+              console.error('❌ WebRTC call to 117 failed:', cause);
+              setQueueMessage(`Call failed: ${cause}`);
+              setCallStatus('ended');
+            },
+          });
+        } catch (err) {
+          console.error('Failed to start WebRTC call to 117:', err);
+          setQueueMessage('Failed to start WebRTC call.');
+          setCallStatus('ended');
+        }
       } else {
         setQueueMessage(data.message || 'Failed to connect call');
         setCallStatus('ended');
@@ -87,6 +145,13 @@ export default function CallDialerPage() {
 
   const handleEndCall = () => {
     setCallStatus('ended');
+    if (webrtcClient) {
+      try {
+        webrtcClient.hangup();
+      } catch (err) {
+        console.error('Error hanging up WebRTC call:', err);
+      }
+    }
     if ((window as any).callInterval) {
       clearInterval((window as any).callInterval);
     }

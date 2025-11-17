@@ -54,9 +54,21 @@ export class AsteriskService implements OnModuleInit {
       this.connected = true;
       this.logger.log('✓ Connected to Asterisk ARI successfully');
 
+      // Start the Stasis application so Asterisk can route calls to it
+      this.ariClient.start('callcenter');
+      this.logger.log('✓ Started Stasis application: callcenter');
+
       // Subscribe to all events for debugging
       this.ariClient.on('StasisStart', (event: any, channel: any) => {
-        this.logger.debug(`StasisStart: ${channel.name}`);
+        this.logger.log(`📞 StasisStart: ${channel.name} entered callcenter app`);
+      });
+
+      this.ariClient.on('StasisEnd', (event: any, channel: any) => {
+        this.logger.log(`📴 StasisEnd: ${channel.name} left callcenter app`);
+      });
+
+      this.ariClient.on('ChannelDtmfReceived', (event: any, channel: any) => {
+        this.logger.log(`🔢 DTMF received: ${event.digit} on channel ${channel.name}`);
       });
     } catch (error: any) {
       this.logger.warn(

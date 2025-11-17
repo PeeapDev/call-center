@@ -16,6 +16,8 @@ export class CallsService {
     '4': 'General Inquiry Queue',
     '9': 'Urgent Queue',
   };
+  // In-memory map of callId -> Asterisk channelId for the IVR leg
+  private callChannelMap: Map<string, string> = new Map();
 
   constructor(
     @InjectRepository(Call)
@@ -243,6 +245,86 @@ export class CallsService {
 
     console.log(`✅ Call ${callId} claimed by agent ${agentName} (${agentExtension})`);
 
+    // Try to bridge the caller channel (prefer real WebRTC citizen leg) to the agent's endpoint via ARI
+    try {
+      const ariClient = this.asteriskService.getClient();
+      let callerChannelId: string | undefined;
+
+      if (ariClient) {
+        try {
+          const channels = await ariClient.channels.list();
+          console.log('📡 ARI channels at claimCall time:',
+            channels.map((ch: any) => ({ id: ch.id, name: ch.name, caller: ch.caller }))
+          );
+
+          // Prefer the citizen's WebRTC channel (extension 1002) if it exists
+          const webrtcChannel = channels.find((ch: any) =>
+            (typeof ch.name === 'string' && ch.name.startsWith('PJSIP/1002')) ||
+            ch.caller?.number === '1002',
+          );
+
+          if (webrtcChannel) {
+            callerChannelId = webrtcChannel.id;
+            console.log(
+              `🎧 Using citizen WebRTC channel ${callerChannelId} for call ${callId}`,
+            );
+          }
+        } catch (listError: any) {
+          console.error(
+            `Failed to list ARI channels while bridging call ${callId}: ${listError.message}`,
+          );
+        }
+      }
+
+      // Fallback: use the stored IVR channel created by initiateCallThroughAsterisk
+      if (!callerChannelId) {
+        callerChannelId = this.callChannelMap.get(callId);
+        if (callerChannelId) {
+          console.log(
+            `📡 Falling back to IVR channel ${callerChannelId} for call ${callId}`,
+          );
+        }
+      }
+
+      if (ariClient && callerChannelId) {
+        console.log(`🔗 Bridging call ${callId} to agent extension ${agentExtension}...`);
+
+        // Create a mixing bridge
+        const bridge = await ariClient.bridges.create({ type: 'mixing' });
+
+        // Add the existing caller channel (citizen or IVR leg)
+        await ariClient.bridges.addChannel({
+          bridgeId: bridge.id,
+          channel: callerChannelId,
+        });
+
+        // Originate a call to the agent's PJSIP endpoint and add it to the bridge
+        const agentChannel = await ariClient.channels.originate({
+          endpoint: `PJSIP/${agentExtension}`,
+          app: 'callcenter',
+          appArgs: ['agent', callId],
+          callerId: call.phoneNumber,
+        });
+
+        await ariClient.bridges.addChannel({
+          bridgeId: bridge.id,
+          channel: agentChannel.id,
+        });
+
+        console.log(
+          `✅ Bridged call ${callId} between caller channel ${callerChannelId} and agent channel ${agentChannel.id}`,
+        );
+      } else {
+        console.warn(
+          `⚠️ Could not bridge call ${callId} - ARI client or caller channel id missing`,
+        );
+      }
+    } catch (error: any) {
+      console.error(
+        `❌ Failed to bridge call ${callId} to agent ${agentExtension}: ${error.message}`,
+      );
+    }
+
     return {
       success: true,
       message: `Call assigned to ${agentName}`,
@@ -312,21 +394,36 @@ export class CallsService {
 
       console.log(`✅ Channel created: ${channel.id}`);
 
+      // Track the caller channel so we can bridge it to an agent later
+      this.callChannelMap.set(savedCall.id, channel.id);
+
       // Process through flow builder
       console.log(`🔄 Processing through flow builder...`);
-      const welcomeNode = activeFlow.nodes.find((n) => n.type === 'welcome');
+      const welcomeNodeDef = activeFlow.nodes.find((n) => n.type === 'welcome');
 
-      if (welcomeNode) {
-        // Play welcome audio
+      if (welcomeNodeDef) {
+        // Resolve audio URL for welcome node (from uploaded media if available)
+        const welcomeNode = await this.flowBuilderService.getNodeWithAudio(welcomeNodeDef.id);
+        const welcomeSoundId = this.getAsteriskSoundIdFromUrl(
+          welcomeNode.audioUrl,
+          'callcenter/welcome',
+        );
+
         console.log(`🔊 Playing welcome message: ${welcomeNode.message}`);
-        await this.playAudioToChannel(channel.id, welcomeNode.audioUrl || 'welcome');
+        await this.playAudioToChannel(channel.id, welcomeSoundId);
 
         // Move to next node (usually menu)
         if (welcomeNode.nextNode) {
-          const menuNode = activeFlow.nodes.find((n) => n.id === welcomeNode.nextNode);
-          if (menuNode && menuNode.type === 'menu') {
+          const menuNodeDef = activeFlow.nodes.find((n) => n.id === welcomeNode.nextNode);
+          if (menuNodeDef && menuNodeDef.type === 'menu') {
+            const menuNode = await this.flowBuilderService.getNodeWithAudio(menuNodeDef.id);
+            const menuSoundId = this.getAsteriskSoundIdFromUrl(
+              menuNode.audioUrl,
+              'callcenter/menu',
+            );
+
             console.log(`📋 Playing menu: ${menuNode.message}`);
-            await this.playAudioToChannel(channel.id, menuNode.audioUrl || 'menu');
+            await this.playAudioToChannel(channel.id, menuSoundId);
           }
         }
       }
@@ -374,9 +471,31 @@ export class CallsService {
         channelId,
         media: `sound:${audioIdentifier}`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to play audio: ${error.message}`);
       // Continue even if audio fails
+    }
+  }
+
+  /**
+   * Convert a media URL (/media/filename.ext) into an Asterisk sound identifier
+   * that matches the mounted uploads in /var/lib/asterisk/sounds/callcenter.
+   */
+  private getAsteriskSoundIdFromUrl(
+    audioUrl: string | undefined,
+    fallbackId: string,
+  ): string {
+    if (!audioUrl) {
+      return fallbackId;
+    }
+
+    try {
+      const parts = audioUrl.split('/');
+      const filename = parts[parts.length - 1];
+      const base = filename.replace(/\.[^/.]+$/, ''); // remove extension
+      return `callcenter/${base}`;
+    } catch {
+      return fallbackId;
     }
   }
 }
