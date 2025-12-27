@@ -1,0 +1,13 @@
+# Render.com configuration for Node.js deployment
+services:
+  - type: web
+    name: callcenter-backend
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
