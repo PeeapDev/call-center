@@ -122,52 +122,54 @@ export default function LoginPage() {
               </div>
             </form>
 
-            {/* Quick Login Buttons */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <p className="text-xs text-gray-500 text-center mb-3">Quick Login (Demo Accounts)</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => quickLogin('000-000-0001', 'Admin@123')}
-                  className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md border bg-red-50 border-red-300 hover:bg-red-100 cursor-pointer"
-                >
-                  <span className="px-2 py-0.5 bg-red-500 text-white rounded text-[10px]">Admin</span>
-                  Super Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => quickLogin('000-000-0002', 'Test@123')}
-                  className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md border bg-purple-50 border-purple-300 hover:bg-purple-100 cursor-pointer"
-                >
-                  <span className="px-2 py-0.5 bg-purple-500 text-white rounded text-[10px]">Sup</span>
-                  Supervisor
-                </button>
-                <button
-                  type="button"
-                  onClick={() => quickLogin('000-000-0003', 'Test@123')}
-                  className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md border bg-blue-50 border-blue-300 hover:bg-blue-100 cursor-pointer"
-                >
-                  <span className="px-2 py-0.5 bg-blue-500 text-white rounded text-[10px]">Agent</span>
-                  Alex Agent
-                </button>
-                <button
-                  type="button"
-                  onClick={() => quickLogin('000-000-0004', 'Test@123')}
-                  className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md border bg-green-50 border-green-300 hover:bg-green-100 cursor-pointer"
-                >
-                  <span className="px-2 py-0.5 bg-green-500 text-white rounded text-[10px]">Analyst</span>
-                  Dana Analyst
-                </button>
-                <button
-                  type="button"
-                  onClick={() => quickLogin('000-000-0005', 'Test@123')}
-                  className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md border bg-gray-50 border-gray-300 hover:bg-gray-100 cursor-pointer col-span-2"
-                >
-                  <span className="px-2 py-0.5 bg-gray-500 text-white rounded text-[10px]">Citizen</span>
-                  John Citizen
-                </button>
+            {/* Quick Login Buttons - Only shown in demo mode */}
+            {process.env.NEXT_PUBLIC_DEMO_MODE === 'true' && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <p className="text-xs text-gray-500 text-center mb-3">Quick Login (Demo Accounts)</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => quickLogin('000-000-0001', 'Admin@123')}
+                    className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md border bg-red-50 border-red-300 hover:bg-red-100 cursor-pointer"
+                  >
+                    <span className="px-2 py-0.5 bg-red-500 text-white rounded text-[10px]">Admin</span>
+                    Super Admin
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => quickLogin('000-000-0002', 'Test@123')}
+                    className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md border bg-purple-50 border-purple-300 hover:bg-purple-100 cursor-pointer"
+                  >
+                    <span className="px-2 py-0.5 bg-purple-500 text-white rounded text-[10px]">Sup</span>
+                    Supervisor
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => quickLogin('000-000-0003', 'Test@123')}
+                    className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md border bg-blue-50 border-blue-300 hover:bg-blue-100 cursor-pointer"
+                  >
+                    <span className="px-2 py-0.5 bg-blue-500 text-white rounded text-[10px]">Agent</span>
+                    Alex Agent
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => quickLogin('000-000-0004', 'Test@123')}
+                    className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md border bg-green-50 border-green-300 hover:bg-green-100 cursor-pointer"
+                  >
+                    <span className="px-2 py-0.5 bg-green-500 text-white rounded text-[10px]">Analyst</span>
+                    Dana Analyst
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => quickLogin('000-000-0005', 'Test@123')}
+                    className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-md border bg-gray-50 border-gray-300 hover:bg-gray-100 cursor-pointer col-span-2"
+                  >
+                    <span className="px-2 py-0.5 bg-gray-500 text-white rounded text-[10px]">Citizen</span>
+                    John Citizen
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="mt-4 text-center text-sm text-gray-500">
               <p>Protected by Ministry of Education IT Security</p>
