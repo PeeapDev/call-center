@@ -16,6 +16,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { MediaModule } from './media/media.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
 import { StudentsModule } from './students/students.module';
+import { SmsModule } from './sms/sms.module';
+import { CallbacksModule } from './callbacks/callbacks.module';
 
 @Module({
   imports: [
@@ -47,6 +49,8 @@ import { StudentsModule } from './students/students.module';
     MediaModule,
     AnnouncementsModule,
     StudentsModule,
+    SmsModule,
+    CallbacksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

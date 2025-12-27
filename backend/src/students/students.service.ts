@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import { Student, StudentCase, StudentStatus, EducationLevel } from './student.entity';
 import { v4 as uuidv4 } from 'uuid';
+import { SmsService } from '../sms/sms.service';
 
 @Injectable()
 export class StudentsService {
@@ -13,6 +14,7 @@ export class StudentsService {
     private studentRepository: Repository<Student>,
     @InjectRepository(StudentCase)
     private caseRepository: Repository<StudentCase>,
+    @Optional() private smsService?: SmsService,
   ) {}
 
   // Student CRUD
@@ -143,7 +145,29 @@ export class StudentsService {
       priority: data.priority || 'medium',
     });
 
-    return this.caseRepository.save(newCase);
+    const savedCase = await this.caseRepository.save(newCase);
+
+    // Send SMS notification if student has a phone number
+    try {
+      const student = await this.findStudentByStudentId(data.studentId);
+      if (student?.phoneNumber && this.smsService) {
+        await this.smsService.sendFromTemplate({
+          templateCode: 'case_created',
+          to: student.phoneNumber,
+          variables: {
+            caseNumber,
+            subject: data.subject,
+          },
+          relatedEntityType: 'case',
+          relatedEntityId: savedCase.id,
+        });
+        this.logger.log(`SMS notification sent for case ${caseNumber}`);
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to send SMS for case ${caseNumber}: ${error.message}`);
+    }
+
+    return savedCase;
   }
 
   async findAllCases(filters?: {

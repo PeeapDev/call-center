@@ -264,8 +264,8 @@ export default function CallFlowBuilderPage() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Call Flow Builder</h1>
-            <p className="text-gray-500 mt-1">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Call Flow Builder</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">
               Design your call routing with visual drag-and-drop interface
             </p>
           </div>
@@ -274,7 +274,7 @@ export default function CallFlowBuilderPage() {
               type="text"
               value={flowName}
               onChange={(e) => setFlowName(e.target.value)}
-              className="px-4 py-2 border rounded-lg font-semibold"
+              className="px-4 py-2 border rounded-lg font-semibold dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               placeholder="Flow name"
             />
             <Button onClick={saveFlow} className="bg-green-600 hover:bg-green-700">
@@ -345,7 +345,7 @@ export default function CallFlowBuilderPage() {
                 onConnect={onConnect}
                 onNodeClick={onNodeClick}
                 fitView
-                className="bg-gray-50 rounded-lg"
+                className="bg-gray-50 dark:bg-gray-800 rounded-lg"
               >
                 <Controls />
                 <MiniMap
@@ -425,24 +425,24 @@ export default function CallFlowBuilderPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.4 }}
       >
-        <Card className="bg-blue-50 border-blue-200">
+        <Card className="bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800">
           <CardContent className="p-4">
             <div className="grid grid-cols-4 gap-4 text-sm">
               <div>
-                <strong className="text-blue-900">1. Add Nodes:</strong>
-                <p className="text-blue-800">Click node types on the left to add them to canvas</p>
+                <strong className="text-blue-900 dark:text-blue-200">1. Add Nodes:</strong>
+                <p className="text-blue-800 dark:text-blue-300">Click node types on the left to add them to canvas</p>
               </div>
               <div>
-                <strong className="text-blue-900">2. Connect:</strong>
-                <p className="text-blue-800">Drag from one node to another to create connections</p>
+                <strong className="text-blue-900 dark:text-blue-200">2. Connect:</strong>
+                <p className="text-blue-800 dark:text-blue-300">Drag from one node to another to create connections</p>
               </div>
               <div>
-                <strong className="text-blue-900">3. Save:</strong>
-                <p className="text-blue-800">Save your flow to reuse later or export as JSON/dialplan</p>
+                <strong className="text-blue-900 dark:text-blue-200">3. Save:</strong>
+                <p className="text-blue-800 dark:text-blue-300">Save your flow to reuse later or export as JSON/dialplan</p>
               </div>
               <div>
-                <strong className="text-blue-900">4. Deploy:</strong>
-                <p className="text-blue-800">Export as Asterisk dialplan and upload to your PBX</p>
+                <strong className="text-blue-900 dark:text-blue-200">4. Deploy:</strong>
+                <p className="text-blue-800 dark:text-blue-300">Export as Asterisk dialplan and upload to your PBX</p>
               </div>
             </div>
           </CardContent>

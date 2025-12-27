@@ -2,11 +2,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Users, Clock, TrendingUp, Brain, ThumbsUp } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Phone, Users, Clock, TrendingUp, Brain, ThumbsUp, GraduationCap, FileText, RefreshCw } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { buildApiUrl } from '@/lib/config';
 import {
   LineChart,
   Line,
@@ -33,6 +34,13 @@ const initialQueueStats = {
   avgWaitTime: 0,
   totalToday: 0,
   avgCallDuration: 0,
+};
+
+const initialStudentStats = {
+  total: 0,
+  openCases: 0,
+  resolvedToday: 0,
+  byCategory: {} as Record<string, number>,
 };
 
 // Analytics chart data
@@ -73,7 +81,9 @@ export default function DashboardPage() {
   const [activeCalls, setActiveCalls] = useState<any[]>(initialActiveCalls);
   const [agents, setAgents] = useState<any[]>(initialAgents);
   const [queueStats, setQueueStats] = useState(initialQueueStats);
+  const [studentStats, setStudentStats] = useState(initialStudentStats);
   const [time, setTime] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -101,18 +111,51 @@ export default function DashboardPage() {
     }
   };
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
-      // Fetch real agents
-      const agentsRes = await fetch(`${API_ENDPOINTS.hrUsers}?accountType=agent`);
+      // Fetch agents
+      const agentsRes = await fetch(buildApiUrl('/hr/users?accountType=agent'));
       const agentsData = await agentsRes.json();
       if (agentsData.status === 'ok') {
         setAgents(agentsData.users || []);
       }
+
+      // Fetch student stats
+      try {
+        const studentStatsRes = await fetch(buildApiUrl('/students/stats'));
+        const studentStatsData = await studentStatsRes.json();
+        if (studentStatsData.status === 'ok') {
+          setStudentStats({
+            total: studentStatsData.stats?.total || 0,
+            openCases: 0,
+            resolvedToday: 0,
+            byCategory: {},
+          });
+        }
+      } catch {
+        // Students endpoint might not exist yet
+      }
+
+      // Fetch case stats
+      try {
+        const caseStatsRes = await fetch(buildApiUrl('/students/cases/stats'));
+        const caseStatsData = await caseStatsRes.json();
+        if (caseStatsData.status === 'ok') {
+          setStudentStats(prev => ({
+            ...prev,
+            openCases: (caseStatsData.stats?.byStatus?.open || 0) + (caseStatsData.stats?.byStatus?.in_progress || 0),
+            byCategory: caseStatsData.stats?.byCategory || {},
+          }));
+        }
+      } catch {
+        // Cases endpoint might not exist yet
+      }
+
+      setLastUpdated(new Date());
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -135,21 +178,31 @@ export default function DashboardPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
+        className="flex items-center justify-between"
       >
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 mt-1">
-          Real-time call center monitoring
-          {backendHealth && (
-            <Badge
-              variant={backendHealth.asterisk.ariConnected ? 'default' : 'secondary'}
-              className="ml-3"
-            >
-              {backendHealth.asterisk.ariConnected
-                ? 'Asterisk Connected'
-                : 'Mock Data Mode'}
-            </Badge>
-          )}
-        </p>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
+            Ministry of Education - Real-time call center monitoring
+            {backendHealth && (
+              <Badge
+                variant={backendHealth.asterisk?.ariConnected ? 'default' : 'secondary'}
+                className="ml-3"
+              >
+                {backendHealth.asterisk?.ariConnected
+                  ? 'Asterisk Connected'
+                  : 'Demo Mode'}
+              </Badge>
+            )}
+          </p>
+        </div>
+        <button
+          onClick={fetchDashboardData}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Refresh
+        </button>
       </motion.div>
 
       {/* Stats Overview */}
@@ -251,6 +304,71 @@ export default function DashboardPage() {
               <div className="text-3xl font-bold">7.8/10</div>
               <p className="text-xs text-green-100">
                 68% positive calls
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Student Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+          whileHover={{ scale: 1.05, y: -5 }}
+        >
+          <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-0 shadow-xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-white">Students in System</CardTitle>
+              <GraduationCap className="h-5 w-5 text-white/80" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{studentStats.total}</div>
+              <p className="text-xs text-indigo-100">
+                Registered student records
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.7 }}
+          whileHover={{ scale: 1.05, y: -5 }}
+        >
+          <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white border-0 shadow-xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-white">Open Cases</CardTitle>
+              <FileText className="h-5 w-5 text-white/80" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{studentStats.openCases}</div>
+              <p className="text-xs text-amber-100">
+                Cases pending resolution
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.8 }}
+          whileHover={{ scale: 1.05, y: -5 }}
+        >
+          <Card className="bg-gradient-to-br from-teal-500 to-teal-600 text-white border-0 shadow-xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-white">Last Updated</CardTitle>
+              <RefreshCw className="h-5 w-5 text-white/80" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">
+                {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Loading...'}
+              </div>
+              <p className="text-xs text-teal-100">
+                Real-time data sync
               </p>
             </CardContent>
           </Card>
