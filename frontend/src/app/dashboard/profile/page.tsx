@@ -49,7 +49,7 @@ export default function ProfilePage() {
                 {/* Avatar */}
                 <div className="relative">
                   <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-4xl font-bold">
-                    {profile.name.split(' ').map(n => n[0]).join('')}
+                    {profile.name.split(' ').map((n: string) => n[0]).join('')}
                   </div>
                   <button className="absolute bottom-0 right-0 w-10 h-10 bg-white rounded-full border-2 border-blue-500 flex items-center justify-center hover:bg-blue-50 transition-colors">
                     <Camera className="w-5 h-5 text-blue-600" />

@@ -272,7 +272,7 @@ export default function StaffChatPage() {
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                        {conversation.citizenName.split(' ').map(n => n[0]).join('')}
+                        {conversation.citizenName.split(' ').map((n: string) => n[0]).join('')}
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">{conversation.citizenName}</p>
@@ -331,7 +331,7 @@ export default function StaffChatPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                  {selectedConversation.citizenName.split(' ').map(n => n[0]).join('')}
+                  {selectedConversation.citizenName.split(' ').map((n: string) => n[0]).join('')}
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">{selectedConversation.citizenName}</h3>
