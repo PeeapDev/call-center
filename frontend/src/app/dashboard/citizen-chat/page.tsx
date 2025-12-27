@@ -160,7 +160,7 @@ export default function CitizenChatPage() {
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
           sender: 'ai',
-          content: `❌ Error: ${error.message}. Check console for details.`,
+          content: `❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}. Check console for details.`,
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, errorMessage]);
