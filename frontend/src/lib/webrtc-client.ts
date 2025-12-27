@@ -28,7 +28,8 @@ export interface WebRTCConfig {
 
 export class WebRTCClient {
   private ua: JsSIP.UA | null = null;
-  private currentSession: JsSIP.RTCSession | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private currentSession: any = null;
   private config: WebRTCConfig;
   private remoteAudio: HTMLAudioElement;
   private localStream: MediaStream | null = null;
@@ -261,7 +262,8 @@ export class WebRTCClient {
 
   // Private methods
 
-  private handleIncomingCall(session: JsSIP.RTCSession): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private handleIncomingCall(session: any): void {
     console.log('📞 Incoming call from:', session.remote_identity.uri.user);
     
     this.currentSession = session;
@@ -282,7 +284,8 @@ export class WebRTCClient {
     });
   }
 
-  private setupCallEventHandlers(session: JsSIP.RTCSession, options: CallOptions): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private setupCallEventHandlers(session: any, options: CallOptions): void {
     session.on('connecting', () => {
       console.log('📞 Call connecting...');
       options.onConnecting?.();
