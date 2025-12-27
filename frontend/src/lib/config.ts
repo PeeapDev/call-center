@@ -8,12 +8,8 @@
  * 4. Update BACKEND_URL below
  */
 
-// CHANGE THIS TO YOUR NGROK URL!
-// Example: export const BACKEND_URL = 'https://abc123.ngrok.io';
-// export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-
-// 🌐 Local development - Backend running on localhost
-export const BACKEND_URL = 'http://localhost:3001';
+// Backend URL - uses environment variable in production, localhost in development
+export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 // WebSocket URL (for WebRTC)
 export const WS_URL = BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://');

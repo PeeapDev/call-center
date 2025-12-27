@@ -1,0 +1,33 @@
+# Render.com Blueprint - Backend Deployment
+# Deploy at: https://dashboard.render.com/blueprints
+
+services:
+  - type: web
+    name: callcenter-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: 5432
+      - key: DB_USERNAME
+        value: postgres
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: postgres
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ASTERISK_ARI_URL
+        value: http://localhost:8088/ari
+      - key: ASTERISK_ARI_USER
+        value: callcenter
+      - key: ASTERISK_ARI_PASSWORD
+        value: change_me_ari

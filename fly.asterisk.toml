@@ -1,0 +1,78 @@
+# Fly.io configuration for Asterisk PBX
+app = "callcenter-asterisk"
+primary_region = "ord"  # Chicago - change to your preferred region
+
+[build]
+  dockerfile = "docker/asterisk/Dockerfile"
+
+[env]
+  TZ = "UTC"
+
+# HTTP for ARI (Asterisk REST Interface)
+[[services]]
+  internal_port = 8088
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 8088
+
+  [[services.http_checks]]
+    interval = 10000
+    timeout = 2000
+    path = "/ari/api-docs/resources.json"
+
+# SIP UDP port
+[[services]]
+  internal_port = 5060
+  protocol = "udp"
+
+  [[services.ports]]
+    port = 5060
+
+# AMI (Asterisk Manager Interface)
+[[services]]
+  internal_port = 5038
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 5038
+
+# RTP ports for audio (voice traffic)
+[[services]]
+  internal_port = 10000
+  protocol = "udp"
+
+  [[services.ports]]
+    port = 10000
+
+[[services]]
+  internal_port = 10001
+  protocol = "udp"
+
+  [[services.ports]]
+    port = 10001
+
+[[services]]
+  internal_port = 10002
+  protocol = "udp"
+
+  [[services.ports]]
+    port = 10002
+
+[[services]]
+  internal_port = 10003
+  protocol = "udp"
+
+  [[services.ports]]
+    port = 10003
+
+[[services]]
+  internal_port = 10004
+  protocol = "udp"
+
+  [[services.ports]]
+    port = 10004
+
+[vm]
+  size = "shared-cpu-1x"
+  memory = "512mb"
