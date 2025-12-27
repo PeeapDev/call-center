@@ -14,8 +14,8 @@ export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localh
 // WebSocket URL (for backend Socket.io)
 export const WS_URL = BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://');
 
-// Asterisk WebSocket URL (for WebRTC SIP)
-export const ASTERISK_WS_URL = process.env.NEXT_PUBLIC_ASTERISK_WS_URL || 'wss://nice-jacky-peeapdev-c1a2e659.koyeb.app/ws';
+// Asterisk WebSocket URL (for WebRTC SIP) - separate Asterisk app
+export const ASTERISK_WS_URL = process.env.NEXT_PUBLIC_ASTERISK_WS_URL || 'wss://asterisk-pbx-peeapdev-7a6d87ad.koyeb.app/ws';
 
 // API endpoints
 export const API_ENDPOINTS = {
