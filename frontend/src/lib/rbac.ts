@@ -28,6 +28,7 @@ export interface RolePermissions {
   canViewNotice: boolean;
   canViewBlog: boolean;
   canViewCallDialer: boolean;
+  canViewStudents: boolean;
 }
 
 export const rolePermissions: Record<UserRole, RolePermissions> = {
@@ -57,6 +58,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewNotice: false,
     canViewBlog: false,
     canViewCallDialer: false,
+    canViewStudents: true,
   },
   supervisor: {
     canViewDashboard: true,
@@ -84,6 +86,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewNotice: false,
     canViewBlog: false,
     canViewCallDialer: false,
+    canViewStudents: true,
   },
   agent: {
     canViewDashboard: false, // Agents get their own simplified dashboard
@@ -111,6 +114,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewNotice: false,
     canViewBlog: false,
     canViewCallDialer: false,
+    canViewStudents: true,
   },
   analyst: {
     canViewDashboard: true,
@@ -138,6 +142,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewNotice: false,
     canViewBlog: false,
     canViewCallDialer: false,
+    canViewStudents: false,
   },
   auditor: {
     canViewDashboard: true,
@@ -165,6 +170,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewNotice: false,
     canViewBlog: false,
     canViewCallDialer: false,
+    canViewStudents: false,
   },
   citizen: {
     canViewDashboard: false, // Citizens get their own user dashboard
@@ -192,6 +198,7 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
     canViewNotice: true,
     canViewBlog: true,
     canViewCallDialer: true,
+    canViewStudents: false,
   },
 };
 
@@ -212,6 +219,7 @@ export function getNavigationItems(role: UserRole | undefined) {
     items.push(
       { href: '/dashboard/agent', label: 'My Dashboard', icon: 'Home' },
       { href: '/dashboard/my-calls', label: 'My Calls', icon: 'PhoneCall' },
+      { href: '/dashboard/students', label: 'Student Records', icon: 'GraduationCap' },
       { href: '/dashboard/chat', label: 'Chat Support', icon: 'MessageSquare' },
     );
   } else if (role === 'citizen' as UserRole) {
@@ -258,6 +266,10 @@ export function getNavigationItems(role: UserRole | undefined) {
 
     if (permissions.canViewHR) {
       items.push({ href: '/dashboard/hr', label: 'Human Resources', icon: 'Briefcase' });
+    }
+
+    if (permissions.canViewStudents) {
+      items.push({ href: '/dashboard/students', label: 'Student Records', icon: 'GraduationCap' });
     }
 
     if (permissions.canViewRecordings) {

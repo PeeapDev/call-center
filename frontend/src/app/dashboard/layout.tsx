@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { Home, Phone, Users, FileAudio, Settings, LogOut, BarChart3, Edit, GitBranch, PhoneCall, Globe, Workflow, Briefcase, MessageSquare, User, Bell, FileText, Sun, Moon } from 'lucide-react';
+import { Home, Phone, Users, FileAudio, Settings, LogOut, BarChart3, Edit, GitBranch, PhoneCall, Globe, Workflow, Briefcase, MessageSquare, User, Bell, FileText, Sun, Moon, GraduationCap, UserCog, Brain } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getNavigationItems, UserRole } from '@/lib/rbac';
@@ -103,6 +103,9 @@ export default function DashboardLayout({
     User,
     Bell,
     FileText,
+    GraduationCap,
+    UserCog,
+    Brain,
   };
 
   const { isDark, toggleTheme } = useTheme();
