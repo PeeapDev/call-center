@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Phone, PhoneIncoming, PhoneOff, Mic, MicOff, Volume2 } from 'lucide-react';
+import { Phone, PhoneIncoming, PhoneOff, Mic, MicOff, Volume2, Pause, Play, PhoneForwarded, Keyboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { io, Socket } from 'socket.io-client';
-import { WebRTCClient } from '@/lib/webrtc-client';
+import { useSession } from 'next-auth/react';
+import { BACKEND_URL, ASTERISK_WS_URL, buildApiUrl } from '@/lib/config';
 
 interface IncomingCall {
   callId: string;
@@ -27,55 +28,90 @@ interface CallSession {
   isOnHold: boolean;
 }
 
+interface AgentCredentials {
+  sipUsername: string;
+  sipPassword: string;
+  sipExtension: string;
+  wsUrl: string;
+}
+
 export default function RealTimeCallNotifications() {
+  const { data: session } = useSession();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [incomingCalls, setIncomingCalls] = useState<IncomingCall[]>([]);
   const [activeCall, setActiveCall] = useState<CallSession | null>(null);
-  const [webrtcClient, setWebrtcClient] = useState<WebRTCClient | null>(null);
+  const [webrtcRegistered, setWebrtcRegistered] = useState(false);
+  const [agentCredentials, setAgentCredentials] = useState<AgentCredentials | null>(null);
+  const [showDialpad, setShowDialpad] = useState(false);
+  const [dialNumber, setDialNumber] = useState('');
   const durationInterval = useRef<NodeJS.Timeout | null>(null);
+  const uaRef = useRef<any>(null);
+  const currentSessionRef = useRef<any>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Initialize WebSocket connection
+  const user = session?.user as any;
+
+  // Fetch agent's SIP credentials
   useEffect(() => {
-    const socketInstance = io('http://localhost:3001/calls', {
+    if (user?.phone) {
+      fetchAgentCredentials();
+    }
+  }, [user]);
+
+  const fetchAgentCredentials = async () => {
+    try {
+      const response = await fetch(buildApiUrl(`/hr/webrtc-config/${user.phone}`));
+      const data = await response.json();
+      if (data.status === 'ok' && data.config) {
+        setAgentCredentials({
+          sipUsername: data.config.sipUsername,
+          sipPassword: data.config.sipPassword,
+          sipExtension: data.config.extension,
+          wsUrl: ASTERISK_WS_URL,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch SIP credentials:', error);
+    }
+  };
+
+  // Initialize WebSocket connection to backend
+  useEffect(() => {
+    const wsUrl = BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://');
+    const socketInstance = io(`${wsUrl}/calls`, {
       transports: ['websocket', 'polling'],
+      path: '/socket.io',
     });
 
     socketInstance.on('connect', () => {
-      console.log('✅ Connected to call server');
+      console.log('Connected to call server');
       setIsConnected(true);
       setSocket(socketInstance);
 
-      // Register as agent
+      // Register as agent with user info
       socketInstance.emit('agent:register', {
-        agentId: 'agent_dashboard_' + Date.now(),
-        agentName: 'Dashboard Agent',
-        extension: '2000',
+        agentId: user?.id || 'agent_' + Date.now(),
+        agentName: user?.name || 'Agent',
+        extension: agentCredentials?.sipExtension || '1000',
       });
     });
 
     socketInstance.on('disconnect', () => {
-      console.log('❌ Disconnected from call server');
+      console.log('Disconnected from call server');
       setIsConnected(false);
     });
 
     socketInstance.on('agent:registered', (data) => {
-      console.log('✅ Agent registered:', data);
+      console.log('Agent registered:', data);
     });
 
     // Listen for incoming calls
     socketInstance.on('call:incoming', (call: IncomingCall) => {
-      console.log('📞 INCOMING CALL:', call);
-      
-      // Play notification sound
+      console.log('INCOMING CALL:', call);
       playNotificationSound();
-      
-      // Add to incoming calls list
       setIncomingCalls((prev) => {
-        // Prevent duplicates
-        if (prev.some(c => c.callId === call.callId)) {
-          return prev;
-        }
+        if (prev.some(c => c.callId === call.callId)) return prev;
         return [...prev, call];
       });
     });
@@ -89,7 +125,7 @@ export default function RealTimeCallNotifications() {
     return () => {
       socketInstance.disconnect();
     };
-  }, []);
+  }, [user, agentCredentials]);
 
   // Call duration timer
   useEffect(() => {
@@ -131,37 +167,100 @@ export default function RealTimeCallNotifications() {
     oscillator.stop(audioContext.currentTime + 0.3);
   };
 
+  // Initialize WebRTC with JsSIP
+  const initializeWebRTC = useCallback(async () => {
+    if (!agentCredentials || uaRef.current) return;
+
+    // Dynamically import JsSIP
+    const JsSIP = (await import('jssip')).default;
+
+    // Create audio element for remote audio
+    if (!remoteAudioRef.current) {
+      remoteAudioRef.current = document.createElement('audio');
+      remoteAudioRef.current.autoplay = true;
+      document.body.appendChild(remoteAudioRef.current);
+    }
+
+    const domain = new URL(agentCredentials.wsUrl).hostname;
+    const socket = new JsSIP.WebSocketInterface(agentCredentials.wsUrl);
+
+    const configuration = {
+      sockets: [socket],
+      uri: `sip:${agentCredentials.sipUsername}@${domain}`,
+      password: agentCredentials.sipPassword,
+      display_name: user?.name || 'Agent',
+      session_timers: false,
+      register: true,
+      register_expires: 600,
+    };
+
+    const ua = new JsSIP.UA(configuration);
+
+    ua.on('registered', () => {
+      console.log('WebRTC SIP registered');
+      setWebrtcRegistered(true);
+    });
+
+    ua.on('registrationFailed', (e: any) => {
+      console.error('WebRTC registration failed:', e.cause);
+      setWebrtcRegistered(false);
+    });
+
+    ua.on('newRTCSession', (data: any) => {
+      const session = data.session;
+      if (session.direction === 'incoming') {
+        handleIncomingWebRTCCall(session);
+      }
+    });
+
+    ua.start();
+    uaRef.current = ua;
+  }, [agentCredentials, user]);
+
+  const handleIncomingWebRTCCall = (session: any) => {
+    currentSessionRef.current = session;
+
+    // Auto-answer or handle with UI
+    session.on('peerconnection', (e: any) => {
+      const pc = e.peerconnection;
+      pc.addEventListener('track', (event: any) => {
+        if (event.streams && event.streams[0] && remoteAudioRef.current) {
+          remoteAudioRef.current.srcObject = event.streams[0];
+          remoteAudioRef.current.play().catch(console.error);
+        }
+      });
+    });
+
+    session.on('ended', () => {
+      setActiveCall(null);
+      currentSessionRef.current = null;
+    });
+
+    session.on('failed', () => {
+      setActiveCall(null);
+      currentSessionRef.current = null;
+    });
+  };
+
   const answerCall = async (call: IncomingCall) => {
     try {
-      console.log('📞 Answering call:', call.callId);
+      console.log('Answering call:', call.callId);
 
       // Notify backend that agent accepted the call
       if (socket) {
-        const response = await new Promise((resolve) => {
-          socket.emit('call:accept', { callId: call.callId }, resolve);
-        });
-        console.log('Backend response:', response);
+        socket.emit('call:accept', { callId: call.callId });
       }
 
-      // Initialize WebRTC if not already done
-      if (!webrtcClient) {
-        const client = new WebRTCClient({
-          wsServer: 'wss://localhost:8089/ws', // Asterisk WebSocket
-          sipUri: 'sip:2000@localhost',
-          password: 'agent_password',
-          displayName: 'Dashboard Agent',
-        });
-
-        try {
-          await client.register();
-          setWebrtcClient(client);
-          console.log('✅ WebRTC client registered');
-        } catch (error) {
-          console.error('❌ WebRTC registration failed:', error);
-          alert('WebRTC connection failed. Make sure Asterisk is running.');
-          return;
-        }
-      }
+      // Claim the call in backend
+      await fetch(buildApiUrl(`/calls/${call.callId}/claim`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: user?.id,
+          agentName: user?.name,
+          extension: agentCredentials?.sipExtension,
+        }),
+      });
 
       // Remove from incoming list
       setIncomingCalls((prev) => prev.filter(c => c.callId !== call.callId));
@@ -176,16 +275,68 @@ export default function RealTimeCallNotifications() {
         isOnHold: false,
       });
 
-      // In a real implementation, you would:
-      // 1. Establish WebRTC connection with the mobile user
-      // 2. Or bridge the call through Asterisk
-      // For now, we simulate the connection
-      
-      alert(`Call connected with ${call.callerName}!\n\nWebRTC connection would be established here.`);
+      // If there's a pending WebRTC session, answer it
+      if (currentSessionRef.current && currentSessionRef.current.direction === 'incoming') {
+        currentSessionRef.current.answer({
+          mediaConstraints: { audio: true, video: false },
+        });
+      }
 
     } catch (error) {
       console.error('Failed to answer call:', error);
-      alert('Failed to answer call');
+    }
+  };
+
+  const makeCall = async (extension: string) => {
+    if (!uaRef.current || !webrtcRegistered) {
+      alert('WebRTC not registered. Please wait...');
+      return;
+    }
+
+    try {
+      const domain = new URL(agentCredentials!.wsUrl).hostname;
+      const session = uaRef.current.call(`sip:${extension}@${domain}`, {
+        mediaConstraints: { audio: true, video: false },
+      });
+
+      currentSessionRef.current = session;
+
+      session.on('connecting', () => console.log('Call connecting...'));
+      session.on('progress', () => console.log('Call ringing...'));
+      session.on('accepted', () => {
+        setActiveCall({
+          callId: 'outbound_' + Date.now(),
+          callerName: `Extension ${extension}`,
+          phoneNumber: extension,
+          duration: 0,
+          isMuted: false,
+          isOnHold: false,
+        });
+      });
+
+      session.on('peerconnection', (e: any) => {
+        const pc = e.peerconnection;
+        pc.addEventListener('track', (event: any) => {
+          if (event.streams && event.streams[0] && remoteAudioRef.current) {
+            remoteAudioRef.current.srcObject = event.streams[0];
+            remoteAudioRef.current.play().catch(console.error);
+          }
+        });
+      });
+
+      session.on('ended', () => {
+        setActiveCall(null);
+        currentSessionRef.current = null;
+      });
+
+      session.on('failed', (e: any) => {
+        console.error('Call failed:', e.cause);
+        setActiveCall(null);
+        currentSessionRef.current = null;
+      });
+
+    } catch (error) {
+      console.error('Failed to make call:', error);
     }
   };
 
@@ -199,29 +350,50 @@ export default function RealTimeCallNotifications() {
       }
 
       // End WebRTC call
-      if (webrtcClient) {
-        webrtcClient.hangup();
+      if (currentSessionRef.current) {
+        currentSessionRef.current.terminate();
+        currentSessionRef.current = null;
       }
 
       // End call in backend database
-      await fetch(`http://localhost:3001/calls/${activeCall.callId}/end`, {
+      await fetch(buildApiUrl(`/calls/${activeCall.callId}/end`), {
         method: 'POST',
       });
 
       setActiveCall(null);
-      console.log('📴 Call ended');
+      console.log('Call ended');
     } catch (error) {
       console.error('Failed to end call:', error);
     }
   };
 
   const toggleMute = () => {
-    if (!activeCall) return;
-    
-    if (webrtcClient) {
-      const isMuted = webrtcClient.toggleMute();
-      setActiveCall((prev) => prev ? { ...prev, isMuted } : null);
+    if (!activeCall || !currentSessionRef.current) return;
+
+    if (activeCall.isMuted) {
+      currentSessionRef.current.unmute({ audio: true });
+    } else {
+      currentSessionRef.current.mute({ audio: true });
     }
+    setActiveCall((prev) => prev ? { ...prev, isMuted: !prev.isMuted } : null);
+  };
+
+  const toggleHold = () => {
+    if (!activeCall || !currentSessionRef.current) return;
+
+    if (activeCall.isOnHold) {
+      currentSessionRef.current.unhold();
+    } else {
+      currentSessionRef.current.hold();
+    }
+    setActiveCall((prev) => prev ? { ...prev, isOnHold: !prev.isOnHold } : null);
+  };
+
+  const sendDTMF = (digit: string) => {
+    if (currentSessionRef.current) {
+      currentSessionRef.current.sendDTMF(digit);
+    }
+    setDialNumber(prev => prev + digit);
   };
 
   const formatDuration = (seconds: number) => {
@@ -242,36 +414,109 @@ export default function RealTimeCallNotifications() {
 
   return (
     <div className="space-y-4">
-      {/* Connection Status */}
-      <div className="flex items-center gap-2">
-        <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-        <span className="text-sm font-medium">
-          {isConnected ? '🟢 Connected - Ready for calls' : '🔴 Disconnected'}
-        </span>
+      {/* Connection Status Bar */}
+      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+            <span className="text-sm font-medium">
+              {isConnected ? 'Server Connected' : 'Disconnected'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${webrtcRegistered ? 'bg-blue-500 animate-pulse' : 'bg-gray-400'}`} />
+            <span className="text-sm font-medium">
+              {webrtcRegistered ? 'Phone Ready' : 'Phone Offline'}
+            </span>
+          </div>
+        </div>
+        {agentCredentials && !webrtcRegistered && (
+          <Button size="sm" onClick={initializeWebRTC} className="bg-blue-600">
+            <Phone className="w-4 h-4 mr-2" />
+            Register Phone
+          </Button>
+        )}
+        {agentCredentials && (
+          <Badge variant="outline" className="text-xs">
+            Ext: {agentCredentials.sipExtension}
+          </Badge>
+        )}
       </div>
+
+      {/* Dialpad / Make Call */}
+      {webrtcRegistered && !activeCall && (
+        <Card className="border border-gray-200">
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Keyboard className="w-4 h-4" />
+              Quick Dial
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-3">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={dialNumber}
+                onChange={(e) => setDialNumber(e.target.value)}
+                placeholder="Enter extension (e.g., 600)"
+                className="flex-1 px-3 py-2 border rounded-md text-sm"
+              />
+              <Button
+                onClick={() => makeCall(dialNumber)}
+                disabled={!dialNumber}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Phone className="w-4 h-4 mr-2" />
+                Call
+              </Button>
+            </div>
+            <div className="grid grid-cols-4 gap-2 mt-3">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((digit) => (
+                <Button
+                  key={digit}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDialNumber(prev => prev + digit)}
+                  className="h-10"
+                >
+                  {digit}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Dial 600 for echo test | 800 for queue
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Active Call */}
       {activeCall && (
         <Card className="border-2 border-green-500 shadow-lg">
-          <CardHeader className="bg-green-50">
+          <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50">
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Phone className="h-5 w-5 text-green-600 animate-pulse" />
                 <span>Active Call</span>
+                {activeCall.isOnHold && <Badge variant="secondary">ON HOLD</Badge>}
               </div>
-              <Badge variant="default" className="text-lg">
+              <Badge variant="default" className="text-lg font-mono bg-green-600">
                 {formatDuration(activeCall.duration)}
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="space-y-4">
-              <div>
+              <div className="text-center">
+                <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-2xl font-bold mb-3">
+                  {activeCall.callerName.split(' ').map(n => n[0]).join('')}
+                </div>
                 <div className="text-2xl font-bold">{activeCall.callerName}</div>
                 <div className="text-gray-600">{activeCall.phoneNumber}</div>
               </div>
 
-              <div className="flex gap-2 justify-center">
+              {/* Call Controls */}
+              <div className="flex gap-2 justify-center flex-wrap">
                 <Button
                   onClick={toggleMute}
                   variant={activeCall.isMuted ? 'destructive' : 'outline'}
@@ -281,11 +526,45 @@ export default function RealTimeCallNotifications() {
                   {activeCall.isMuted ? 'Unmute' : 'Mute'}
                 </Button>
 
+                <Button
+                  onClick={toggleHold}
+                  variant={activeCall.isOnHold ? 'secondary' : 'outline'}
+                  size="lg"
+                >
+                  {activeCall.isOnHold ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}
+                  {activeCall.isOnHold ? 'Resume' : 'Hold'}
+                </Button>
+
+                <Button
+                  onClick={() => setShowDialpad(!showDialpad)}
+                  variant="outline"
+                  size="lg"
+                >
+                  <Keyboard className="mr-2 h-5 w-5" />
+                  Keypad
+                </Button>
+
                 <Button onClick={endCall} variant="destructive" size="lg">
                   <PhoneOff className="mr-2 h-5 w-5" />
-                  End Call
+                  End
                 </Button>
               </div>
+
+              {/* In-call Dialpad */}
+              {showDialpad && (
+                <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto mt-4">
+                  {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((digit) => (
+                    <Button
+                      key={digit}
+                      variant="outline"
+                      onClick={() => sendDTMF(digit)}
+                      className="h-12 text-lg font-semibold"
+                    >
+                      {digit}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
