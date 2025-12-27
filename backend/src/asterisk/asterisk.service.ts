@@ -30,16 +30,23 @@ export class AsteriskService implements OnModuleInit {
         return;
       }
 
-      // Parse URL to get host and port
+      // Parse URL to get host, port, and protocol
       const url = new URL(ariUrl);
+      const protocol = url.protocol; // 'http:' or 'https:'
       const host = url.hostname;
-      const port = url.port || '8088';
+      // For HTTPS (cloud deployment), don't append port. For HTTP (local), use specified or default 8088
+      const port = url.port || (protocol === 'https:' ? '' : '8088');
 
-      this.logger.log(`Attempting to connect to Asterisk ARI at ${host}:${port}...`);
+      // Construct the connection URL properly
+      const connectionUrl = port
+        ? `${protocol}//${host}:${port}`
+        : `${protocol}//${host}`;
+
+      this.logger.log(`Attempting to connect to Asterisk ARI at ${connectionUrl}...`);
 
       // Set a timeout to prevent hanging
       const connectPromise = ari.connect(
-        `http://${host}:${port}`,
+        connectionUrl,
         ariUser,
         ariPassword,
       );
