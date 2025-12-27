@@ -18,6 +18,10 @@ export class InitiateCallDto {
   @IsString()
   @IsOptional()
   userId?: string;
+
+  @IsString()
+  @IsOptional()
+  queueName?: string;
 }
 
 export class CallResponseDto {
