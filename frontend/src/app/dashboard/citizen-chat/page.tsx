@@ -237,7 +237,7 @@ export default function CitizenChatPage() {
               className="mt-4 flex items-center gap-3 bg-white/20 backdrop-blur-sm rounded-lg p-3"
             >
               <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-purple-600 font-semibold">
-                {staffInfo.name.split(' ').map(n => n[0]).join('')}
+                {staffInfo.name.split(' ').map((n: string) => n[0]).join('')}
               </div>
               <div>
                 <p className="font-medium">{staffInfo.name}</p>
