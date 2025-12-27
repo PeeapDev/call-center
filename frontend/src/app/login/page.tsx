@@ -122,7 +122,64 @@ export default function LoginPage() {
               </div>
             </form>
 
-            <div className="mt-6 text-center text-sm text-gray-500">
+            {/* Quick Login Buttons */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <p className="text-xs text-gray-500 text-center mb-3">Quick Login (Demo Accounts)</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => quickLogin('000-000-0001', 'Admin@123')}
+                  className="text-xs bg-red-50 border-red-200 hover:bg-red-100"
+                >
+                  <Badge className="mr-1 bg-red-500 text-[10px]">Admin</Badge>
+                  Super Admin
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => quickLogin('000-000-0002', 'Test@123')}
+                  className="text-xs bg-purple-50 border-purple-200 hover:bg-purple-100"
+                >
+                  <Badge className="mr-1 bg-purple-500 text-[10px]">Sup</Badge>
+                  Supervisor
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => quickLogin('000-000-0003', 'Test@123')}
+                  className="text-xs bg-blue-50 border-blue-200 hover:bg-blue-100"
+                >
+                  <Badge className="mr-1 bg-blue-500 text-[10px]">Agent</Badge>
+                  Alex Agent
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => quickLogin('000-000-0004', 'Test@123')}
+                  className="text-xs bg-green-50 border-green-200 hover:bg-green-100"
+                >
+                  <Badge className="mr-1 bg-green-500 text-[10px]">Analyst</Badge>
+                  Dana Analyst
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => quickLogin('000-000-0005', 'Test@123')}
+                  className="text-xs bg-gray-50 border-gray-200 hover:bg-gray-100 col-span-2"
+                >
+                  <Badge className="mr-1 bg-gray-500 text-[10px]">Citizen</Badge>
+                  John Citizen
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 text-center text-sm text-gray-500">
               <p>Protected by Ministry of Education IT Security</p>
             </div>
           </CardContent>
