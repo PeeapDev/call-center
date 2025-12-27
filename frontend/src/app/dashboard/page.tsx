@@ -23,6 +23,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { API_ENDPOINTS } from '@/lib/config';
+import RealTimeCallNotifications from '@/components/RealTimeCallNotifications';
 
 // Real data - will be fetched from API
 const initialActiveCalls: any[] = [];
@@ -255,6 +256,27 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Softphone - Real-Time Call Notifications */}
+      {(session?.user as any)?.role && ['admin', 'supervisor', 'agent'].includes((session?.user as any)?.role) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.55 }}
+        >
+          <Card className="border-0 shadow-lg border-2 border-blue-200">
+            <CardHeader className="bg-gradient-to-r from-blue-100 to-purple-100 border-b">
+              <CardTitle className="flex items-center gap-2">
+                <Phone className="w-5 h-5 text-blue-600" />
+                Softphone - WebRTC Calls
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <RealTimeCallNotifications />
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Active Calls */}
       <motion.div
