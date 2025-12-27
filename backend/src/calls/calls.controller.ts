@@ -51,4 +51,26 @@ export class CallsController {
   ): Promise<{ success: boolean; message: string }> {
     return this.callsService.claimCall(id, claimCallDto.agentName, claimCallDto.agentExtension);
   }
+
+  // Demo/Test endpoint - triggers a simulated incoming call
+  @Post('test/incoming')
+  async triggerTestCall(@Body() body: { callerName?: string; phoneNumber?: string }): Promise<CallResponseDto> {
+    const testCall: InitiateCallDto = {
+      callerName: body.callerName || 'Test Caller',
+      phoneNumber: body.phoneNumber || '+1-555-TEST-' + Math.floor(Math.random() * 9000 + 1000),
+      ivrOption: '1',
+      queueName: 'General Support',
+    };
+    return this.callsService.initiateCall(testCall);
+  }
+
+  // Demo endpoint - simulate a call between two agents
+  @Post('test/agent-call')
+  async triggerAgentCall(@Body() body: { fromAgent: string; toExtension: string }): Promise<any> {
+    return {
+      status: 'ok',
+      message: `Simulated call from ${body.fromAgent} to extension ${body.toExtension}`,
+      callId: 'demo_' + Date.now(),
+    };
+  }
 }

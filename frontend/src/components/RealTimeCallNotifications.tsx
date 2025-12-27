@@ -45,6 +45,7 @@ export default function RealTimeCallNotifications() {
   const [agentCredentials, setAgentCredentials] = useState<AgentCredentials | null>(null);
   const [showDialpad, setShowDialpad] = useState(false);
   const [dialNumber, setDialNumber] = useState('');
+  const [triggeringTestCall, setTriggeringTestCall] = useState(false);
   const durationInterval = useRef<NodeJS.Timeout | null>(null);
   const uaRef = useRef<any>(null);
   const currentSessionRef = useRef<any>(null);
@@ -396,6 +397,27 @@ export default function RealTimeCallNotifications() {
     setDialNumber(prev => prev + digit);
   };
 
+  // Trigger a test/demo incoming call
+  const triggerTestCall = async () => {
+    setTriggeringTestCall(true);
+    try {
+      const response = await fetch(buildApiUrl('/calls/test/incoming'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          callerName: 'Demo Caller',
+          phoneNumber: '+1-555-DEMO-' + Math.floor(Math.random() * 9000 + 1000),
+        }),
+      });
+      const data = await response.json();
+      console.log('Test call triggered:', data);
+    } catch (error) {
+      console.error('Failed to trigger test call:', error);
+    } finally {
+      setTriggeringTestCall(false);
+    }
+  };
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -415,7 +437,7 @@ export default function RealTimeCallNotifications() {
   return (
     <div className="space-y-4">
       {/* Connection Status Bar */}
-      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg flex-wrap gap-2">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
@@ -426,21 +448,35 @@ export default function RealTimeCallNotifications() {
           <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-full ${webrtcRegistered ? 'bg-blue-500 animate-pulse' : 'bg-gray-400'}`} />
             <span className="text-sm font-medium">
-              {webrtcRegistered ? 'Phone Ready' : 'Phone Offline'}
+              {webrtcRegistered ? 'Phone Ready' : 'Demo Mode'}
             </span>
           </div>
         </div>
-        {agentCredentials && !webrtcRegistered && (
-          <Button size="sm" onClick={initializeWebRTC} className="bg-blue-600">
-            <Phone className="w-4 h-4 mr-2" />
-            Register Phone
+        <div className="flex items-center gap-2">
+          {/* Test Call Button */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={triggerTestCall}
+            disabled={triggeringTestCall || !isConnected}
+            className="border-orange-300 text-orange-600 hover:bg-orange-50"
+          >
+            <PhoneIncoming className="w-4 h-4 mr-1" />
+            {triggeringTestCall ? 'Sending...' : 'Test Call'}
           </Button>
-        )}
-        {agentCredentials && (
-          <Badge variant="outline" className="text-xs">
-            Ext: {agentCredentials.sipExtension}
-          </Badge>
-        )}
+
+          {agentCredentials && !webrtcRegistered && (
+            <Button size="sm" onClick={initializeWebRTC} className="bg-blue-600">
+              <Phone className="w-4 h-4 mr-2" />
+              Register Phone
+            </Button>
+          )}
+          {agentCredentials && (
+            <Badge variant="outline" className="text-xs">
+              Ext: {agentCredentials.sipExtension}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Dialpad / Make Call */}
