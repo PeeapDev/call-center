@@ -130,9 +130,14 @@ export class HrService {
     if (userData.skills !== undefined) user.skills = userData.skills;
     if (userData.isActive !== undefined) user.isActive = userData.isActive;
 
+    // Update SIP credentials if provided
+    if (userData.sipUsername !== undefined) user.sipUsername = userData.sipUsername;
+    if (userData.sipPassword !== undefined) user.sipPassword = userData.sipPassword;
+    if (userData.sipExtension !== undefined) user.sipExtension = userData.sipExtension;
+
     if (userData.password) {
       user.password = await bcrypt.hash(userData.password, 10);
-      
+
       // Also update SIP password if user has SIP credentials (agent/supervisor/admin)
       if (user.sipUsername && (user.accountType === 'agent' || user.accountType === 'supervisor' || user.accountType === 'admin')) {
         user.sipPassword = userData.password; // Keep SIP password in sync with login password

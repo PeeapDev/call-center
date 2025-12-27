@@ -22,6 +22,9 @@ class UpdateUserDto {
   extension?: string;
   skills?: string[];
   isActive?: boolean;
+  sipUsername?: string;
+  sipPassword?: string;
+  sipExtension?: string;
 }
 
 class UpdateWebRTCConfigDto {
