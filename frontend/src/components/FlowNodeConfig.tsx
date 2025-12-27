@@ -300,7 +300,7 @@ export function FlowNodeConfig({ node, onClose, onUpdate }: FlowNodeConfigProps)
                 ) : (
                   ivrMedia.map((media) => (
                     <option key={media.id} value={media.id}>
-                      {media.name} {media.subcategory && `(${media.subcategory})`}
+                      {media.name} {media.category && `(${media.category})`}
                     </option>
                   ))
                 )}
