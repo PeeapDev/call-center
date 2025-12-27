@@ -37,7 +37,7 @@ export default function AgentsPage() {
   const [loading, setLoading] = useState(true);
   const [webrtcAgents, setWebrtcAgents] = useState<Map<string, WebRTCAgent>>(new Map());
   const [jssipLoaded, setJssipLoaded] = useState(false);
-  const [wsServer, setWsServer] = useState('ws://192.168.1.17:8088/ws');
+  const [wsServer, setWsServer] = useState(process.env.NEXT_PUBLIC_ASTERISK_WS_URL || 'wss://nice-jacky-peeapdev-c1a2e659.koyeb.app/ws');
   
   const user = session?.user as any;
   const userRole = user?.role;
